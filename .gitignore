@@ -1,0 +1,30 @@
+# --- Cloned third-party reference repos (do not redistribute) ---
+cuda-course/
+CUDALibrarySamples/
+cuda-samples/
+gaussian-splatting/
+kernels/
+pmpp/
+taming-3dgs/
+
+# Symlink pointing outside this folder (target lives in reference_code/)
+GaussianFormer
+
+# --- Build artifacts ---
+**/build/
+**/*.egg-info/
+**/__pycache__/
+**/*.so
+**/*.o
+**/*.pyc
+**/*.pyd
+
+# --- Paper PDFs (excluded for size + licensing; see arxiv links in docs) ---
+*.pdf
+
+# --- Editor / OS noise ---
+*.swp
+*~
+.DS_Store
+.idea/
+.vscode/

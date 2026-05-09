@@ -1,0 +1,86 @@
+{
+  "gpu": "NVIDIA GeForce RTX 3060",
+  "configs": [
+    {
+      "label": "Prob-64-eq",
+      "n_gauss": 6400,
+      "voxels": 640000,
+      "n_chan": 18,
+      "gf": {
+        "fwd_ms_median": 4.4269,
+        "fwd_ms_min": 4.3735,
+        "fwd_ms_max": 4.7114,
+        "fwd_bwd_ms_median": 17.588,
+        "bwd_ms_median": 13.1612,
+        "peak_mb": 218.36
+      },
+      "s2go": {
+        "fwd_ms_median": 4.4206,
+        "fwd_ms_min": 4.3704,
+        "fwd_ms_max": 4.4483,
+        "fwd_bwd_ms_median": 17.587,
+        "bwd_ms_median": 13.1664,
+        "peak_mb": 218.36
+      },
+      "ratio": {
+        "fwd": 1.001,
+        "bwd": 1.0,
+        "mem": 1.0
+      }
+    },
+    {
+      "label": "Prob-128-eq",
+      "n_gauss": 12800,
+      "voxels": 640000,
+      "n_chan": 18,
+      "gf": {
+        "fwd_ms_median": 8.7992,
+        "fwd_ms_min": 8.6876,
+        "fwd_ms_max": 8.8576,
+        "fwd_bwd_ms_median": 38.4481,
+        "bwd_ms_median": 29.6488,
+        "peak_mb": 312.16
+      },
+      "s2go": {
+        "fwd_ms_median": 8.804,
+        "fwd_ms_min": 8.7306,
+        "fwd_ms_max": 8.8723,
+        "fwd_bwd_ms_median": 38.4891,
+        "bwd_ms_median": 29.6851,
+        "peak_mb": 312.16
+      },
+      "ratio": {
+        "fwd": 0.999,
+        "bwd": 0.999,
+        "mem": 1.0
+      }
+    },
+    {
+      "label": "Prob-256-eq",
+      "n_gauss": 25600,
+      "voxels": 640000,
+      "n_chan": 18,
+      "gf": {
+        "fwd_ms_median": 23.4271,
+        "fwd_ms_min": 23.2868,
+        "fwd_ms_max": 23.5602,
+        "fwd_bwd_ms_median": 79.5351,
+        "bwd_ms_median": 56.108,
+        "peak_mb": 501.26
+      },
+      "s2go": {
+        "fwd_ms_median": 23.4442,
+        "fwd_ms_min": 23.2662,
+        "fwd_ms_max": 23.5612,
+        "fwd_bwd_ms_median": 80.7564,
+        "bwd_ms_median": 57.3123,
+        "peak_mb": 501.26
+      },
+      "ratio": {
+        "fwd": 0.999,
+        "bwd": 0.979,
+        "mem": 1.0
+      }
+    }
+  ]
+}
