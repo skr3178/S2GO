@@ -49,8 +49,9 @@ def render(gaussians: Gaussians,
         depth:  (C, H, W)         only if render_mode contains D / ED
         alpha:  (C, H, W, 1)
     """
-    if gaussians.colors is None:
-        raise ValueError("gsplat render needs colors; pass with_rgb=True to assembler")
+    depth_only = render_mode in ("D", "ED")
+    if gaussians.colors is None and not depth_only:
+        raise ValueError("gsplat render needs colors unless render_mode in ('D','ED')")
     if gaussians.means.dim() == 3:
         # Strip leading batch axis if B==1
         assert gaussians.means.shape[0] == 1, \
@@ -59,12 +60,17 @@ def render(gaussians: Gaussians,
         quats = gaussians.rotations.squeeze(0)
         scales = gaussians.scales.squeeze(0)
         opacities = gaussians.opacities.squeeze(0).squeeze(-1)        # (N,)
-        colors = gaussians.colors.squeeze(0)
+        if gaussians.colors is not None:
+            colors = gaussians.colors.squeeze(0)
+        else:
+            # gsplat still requires a colors tensor; pass a 1-channel placeholder.
+            colors = means.new_zeros(means.shape[0], 1)
     else:
         means, quats, scales = gaussians.means, gaussians.rotations, gaussians.scales
         opacities = gaussians.opacities.squeeze(-1) if gaussians.opacities.dim() == 2 \
                     else gaussians.opacities
-        colors = gaussians.colors
+        colors = gaussians.colors if gaussians.colors is not None \
+                  else means.new_zeros(means.shape[0], 1)
 
     renders, alphas, _meta = rasterization(
         means=means, quats=quats, scales=scales,
@@ -74,8 +80,19 @@ def render(gaussians: Gaussians,
         render_mode=render_mode,
         near_plane=near_plane, far_plane=far_plane,
     )
-    rgb = renders[..., :3]                         # (C, H, W, 3)
-    depth = renders[..., 3] if render_mode in ("RGB+D", "RGB+ED") else None
+    # Output channel layout:
+    #   'RGB+D' / 'RGB+ED' → 4 chans: (R, G, B, depth)
+    #   'RGB'              → 3 chans
+    #   'D' / 'ED'         → 1 chan: (depth,)
+    if depth_only:
+        rgb = None
+        depth = renders[..., 0]
+    elif render_mode in ("RGB+D", "RGB+ED"):
+        rgb = renders[..., :3]
+        depth = renders[..., 3]
+    else:                                          # plain 'RGB'
+        rgb = renders[..., :3]
+        depth = None
     return rgb, depth, alphas
 
 

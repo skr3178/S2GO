@@ -42,6 +42,8 @@ class FrameOutput(NamedTuple):
     refined_xyz: torch.Tensor    # (B, K, 3) = init_xyz + parent.offset → L_denoise input
     parent:      ParentPred
     velocity:    torch.Tensor    # (B, K*J, 3) for ±0.5s render warps
+    prop:        'Propagated'    # opacity-δ propagator output (top-k selection;
+                                  # used only for diagnostics, not for loss)
 
 
 class S2GOSegmentor(nn.Module):
@@ -74,7 +76,8 @@ class S2GOSegmentor(nn.Module):
                  propagate_k: int = 256,
                  T_queue: int = 4,
                  memory_len: int = None,
-                 child_mode: str = 'rgb'):
+                 child_mode: str = 'rgb',
+                 use_checkpoint: bool = False):
         super().__init__()
         self.K = K
         self.J = J
@@ -89,7 +92,8 @@ class S2GOSegmentor(nn.Module):
             num_layers=num_layers,
             embed_dims=embed_dims, num_heads=num_heads, num_groups=num_groups,
             num_levels=num_levels, num_cams=num_cams, num_pts=num_pts,
-            feedforward_channels=feedforward_channels, dropout=dropout)
+            feedforward_channels=feedforward_channels, dropout=dropout,
+            use_checkpoint=use_checkpoint)
         self.queue = MemoryQueue(memory_len=memory_len, embed_dims=embed_dims)
         self.propagator = OpacityDeltaPropagator(k=propagate_k)
 
@@ -169,7 +173,8 @@ class S2GOSegmentor(nn.Module):
             init_xyz=init_xyz,
             refined_xyz=refined_xyz,
             parent=parent,
-            velocity=G.velocity)
+            velocity=G.velocity,
+            prop=prop)
 
     def forward(self, sequence: List[Dict[str, torch.Tensor]]) -> List[FrameOutput]:
         """T-frame mini-sequence forward. Resets memory at start."""

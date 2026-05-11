@@ -28,6 +28,7 @@ from typing import Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
 
 from flash_attn import flash_attn_func
 from mmcv.ops.multi_scale_deform_attn import MultiScaleDeformableAttnFunction
@@ -301,12 +302,13 @@ class TemporalDecoderLayer(nn.Module):
 class TemporalDecoder(nn.Module):
     """N-layer temporal transformer wrapper (paper §B: 6 layers, embed=768)."""
 
-    def __init__(self, num_layers: int = 6, **layer_kwargs):
+    def __init__(self, num_layers: int = 6, use_checkpoint: bool = False, **layer_kwargs):
         super().__init__()
         self.layers = nn.ModuleList([
             TemporalDecoderLayer(**layer_kwargs) for _ in range(num_layers)
         ])
         self.num_layers = num_layers
+        self.use_checkpoint = use_checkpoint
 
     def forward(self, query, query_pos, temp_memory, temp_pos,
                 feat_flatten, reference_points, spatial_shapes,
@@ -314,9 +316,21 @@ class TemporalDecoder(nn.Module):
                 return_intermediate: bool = False):
         intermediates = []
         for layer in self.layers:
-            query = layer(query, query_pos, temp_memory, temp_pos,
-                            feat_flatten, reference_points, spatial_shapes,
-                            level_start_index, lidar2img, pad_h, pad_w)
+            if self.use_checkpoint and self.training and query.requires_grad:
+                # Wrap into a closure capturing the two ints (pad_h, pad_w) and
+                # the non-Tensor None possibility for temp_memory/temp_pos. The
+                # checkpoint helper requires use_reentrant=False to handle None.
+                def _run(q, qp, tm, tp, ff, rp, ss, lsi, l2i, layer=layer):
+                    return layer(q, qp, tm, tp, ff, rp, ss, lsi, l2i, pad_h, pad_w)
+                query = checkpoint(_run,
+                                   query, query_pos, temp_memory, temp_pos,
+                                   feat_flatten, reference_points, spatial_shapes,
+                                   level_start_index, lidar2img,
+                                   use_reentrant=False)
+            else:
+                query = layer(query, query_pos, temp_memory, temp_pos,
+                                feat_flatten, reference_points, spatial_shapes,
+                                level_start_index, lidar2img, pad_h, pad_w)
             if return_intermediate:
                 intermediates.append(query)
         if return_intermediate:

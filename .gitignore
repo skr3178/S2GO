@@ -19,6 +19,12 @@ GaussianFormer
 **/*.pyc
 **/*.pyd
 
+# --- Trained model weights (heavy; reproducible from overfit.py --save-path) ---
+out/checkpoints/
+**/*.pt
+**/*.pth
+**/*.ckpt
+
 # --- Paper PDFs (excluded for size + licensing; see arxiv links in docs) ---
 *.pdf
 
