@@ -150,3 +150,128 @@ Discovered 2026-05-11. Two runs in chat session: `python -m s2go.tools.denoise_o
 (Test 2). ~3 min each on the 3060.
 
 ---
+
+## H3 — LIDAR_TOP frame is `+y forward`, not `+x forward`
+
+**TL;DR:** nuScenes' LIDAR_TOP sensor frame uses **`+y` as the forward
+direction**. Don't assume "+x forward" by analogy with the ego frame —
+they're different. Projecting a hand-picked test point like `[10, 0, -1, 1]`
+("10 m forward, centerline, ground level") through `lidar2img[CAM_FRONT]`
+yields a *negative* depth and pixel coords thousands of pixels off-image,
+which looks like a catastrophic bug but is just a wrong-axis test point.
+
+### Empirical verification
+
+Project all LiDAR points through `lidar2img[0]` (CAM_FRONT), keep the ones
+that land in-bounds with `z > 0`. The axis whose values are strictly
+positive for that filtered set is the LIDAR_TOP "forward" axis. Result on a
+real frame (3,364 visible points):
+
+| axis | min      | max      | median |
+|------|----------|----------|--------|
+| x    | −23.22 m | +11.97 m | −0.32  |
+| y    | **+5.19 m** | **+74.21 m** | **+16.62** |  ← strictly positive ⇒ forward
+| z    | −1.80 m  | +11.65 m | −1.41  |
+
+So LIDAR_TOP in nuScenes is: **+y forward, +x ≈ left/right, +z ≈ up**.
+
+### Why this doesn't break training
+
+The model never sees these axis labels. The temporal decoder's
+cross-attention uses `lidar2img` to project queries to pixel coords; the
+projection math is axis-agnostic, it just composes the calibration that the
+loader baked in. The bulk consistency check (count of in-bounds projected
+points per cam vs. count of nonzero pixels in `lidar_depth`):
+
+| cam | in-bounds via `l2i` | nonzero in `lidar_depth` |
+|-----|--------------------:|-------------------------:|
+| 0 (CAM_FRONT)       | 3,364 | 3,352 |
+| 1 (CAM_FRONT_LEFT)  | 3,263 | 3,256 |
+| 2 (CAM_FRONT_RIGHT) | 2,770 | 2,766 |
+| 3 (CAM_BACK)        | 4,318 | 4,315 |
+| 4 (CAM_BACK_LEFT)   | 4,055 | 4,045 |
+| 5 (CAM_BACK_RIGHT)  | 2,998 | 2,984 |
+
+Differences are ≤ 14 pixels per cam (edge-clipped LiDAR returns), confirming
+`lidar2img`, `viewmats`, `cam_K`, and the loader's own LiDAR→cam depth
+rasterization are all internally consistent.
+
+### Where this bites
+
+- **Manual debug projections.** If you write a one-off sanity check
+  "project a known forward point through CAM_FRONT", use **`+y`** as the
+  forward axis. Otherwise the projection returns garbage and you spend an
+  hour suspecting `lidar2img` is broken.
+- **Sample-token-keyed visualizations.** If you ever want to filter LiDAR
+  points by "in front of the car", the filter is
+  `(pts[:, 1] > 0) & (np.abs(pts[:, 0]) < W/2)`, NOT `pts[:, 0] > 0`.
+- **Ego_pose composition.** `ego_pose` in our loader is `world ← LIDAR_TOP`
+  (verified in [`nusc_loader.py`](s2go/datasets/nusc_loader.py)). Its translation magnitude on the verification
+  sample was 1180 m (sane for nuScenes global coords in Boston/Singapore);
+  its rotation is SE(3)-valid (`R^T·R ≈ I` to 6e-8, `det = +1.0` to 1e-6).
+
+### Other small things confirmed during the investigation
+
+- **`ego_pose @ ego_pose_inv − I`** has max error 6.1e-5. This is just fp32
+  noise on a 1180-m translation; the practical round-trip
+  `LIDAR → world → LIDAR` lands within 4.2e-5 m of the original point. Safe
+  to use both in autocast/fp32 forward paths.
+- **`lidar2img == K_4×4 @ viewmat`** to 7.75e-5 across all 6 cams
+  ([`_build_lidar2img()`](s2go/datasets/nusc_loader.py) line 163), so there's no funny non-projective term
+  hidden in `l2i`.
+
+### Verification trail
+
+Discovered 2026-05-12 while auditing whether the architecture-doc's claim
+"reference_points = refined_xyz" matched the code (it didn't — it's
+actually `init_xyz`, see [s2go/models/segmentor.py:148](s2go/models/segmentor.py)). The
+axis-convention finding fell out of the same verification run.
+
+---
+
+## H4 — Python stdout block-buffers under `nohup`, hiding training progress
+
+**TL;DR:** When stdout is redirected to a file (as `nohup ... > log 2>&1` does),
+Python switches from line-buffered to **block-buffered** (8 KB). `print()`
+calls inside a tight training loop accumulate in the buffer and don't appear
+in the log file until 8 KB has piled up — which for a sparse `--log-every 100`
+setup can mean **never** during a 2-hour run.
+
+### Symptom
+
+Launched a 5,000-iter training run via `nohup`; after 13 minutes the log file
+still contained zero iter rows even though `nvidia-smi` showed the GPU pinned
+at 100 % utilization with steady memory. Looked like a hang; was actually
+just buffered output.
+
+### Math
+
+- One iter row ≈ 150 bytes
+- `--log-every 100` over 5,000 iters → 50 rows total
+- 50 × 150 = 7,500 bytes — **just under** the 8 KB flush threshold
+- Buffer would only flush at process exit (atexit handlers)
+
+### Fix
+
+```bash
+exec env PYTHONUNBUFFERED=1 python -u -m s2go.tools.overfit  ...
+```
+
+- `-u` forces unbuffered stdout and stderr
+- `PYTHONUNBUFFERED=1` is the env-var equivalent (belt-and-suspenders)
+
+After the fix, iter 0 appeared in the log within 30 s, and every subsequent
+logged iter flushed immediately.
+
+### When this bites
+
+Any long Python run under nohup with redirected stdout — applies to all of
+our overfit/eval/checkpoint scripts. Worth adding `python -u` to launcher
+scripts by default.
+
+### Verification trail
+
+Discovered 2026-05-12 during the 5,000-iter `--full-data` streaming run.
+Killed and relaunched with `-u`; iter rows became visible in real time.
+
+---

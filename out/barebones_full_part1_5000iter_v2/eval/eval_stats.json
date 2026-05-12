@@ -1,0 +1,49 @@
+{
+  "checkpoint": "out/barebones_full_part1_5000iter_v2/ckpt.pt",
+  "seq_idx": 0,
+  "A_bev": {
+    "nn_dist_mean": 2.4361793994903564,
+    "nn_dist_median": 2.1356008052825928,
+    "nn_dist_min": 0.11692679673433304,
+    "nn_dist_max": 6.468636989593506
+  },
+  "B_render": {
+    "rgb_minmax": [
+      0.0,
+      0.6660980582237244
+    ],
+    "depth_minmax": [
+      0.0,
+      62.72168731689453
+    ]
+  },
+  "C_gauss": {
+    "opacity": {
+      "mean": 0.1702047735452652,
+      "std": 0.18461865186691284,
+      "min": 5.599360419772381e-10,
+      "max": 0.7364138960838318
+    },
+    "scale": {
+      "mean": 1.985370397567749,
+      "std": 0.7610247135162354,
+      "min": 0.3987892270088196,
+      "max": 3.459368944168091
+    },
+    "velocity": {
+      "mean": 0.8323857188224792,
+      "std": 0.18145453929901123,
+      "min": 0.366468608379364,
+      "max": 1.2832554578781128
+    }
+  },
+  "D_queue": {
+    "memory_capacity": 256,
+    "memory_populated": 256,
+    "memory_unique_xyz": 256,
+    "topk_opacity_min": 0.4123191237449646,
+    "topk_opacity_max": 0.7364335656166077,
+    "topk_opacity_mean": 0.5194401144981384,
+    "topk_opacity_std": 0.08344348520040512
+  }
+}

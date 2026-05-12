@@ -49,6 +49,7 @@ flowchart TD
 
     EPS -->|init_xyz| POSMLP
     POSMLP -->|anchor_embed| TD
+    EPS -->|"reference_points = init_xyz<br/>(FIXED across all 6 layers;<br/>parent.offset applied AFTER decoder)"| TD
     FPN -->|image features<br/>+ spatial_shapes| TD
     MQ -.->|temp_memory, temp_pos| TD
     TD -->|query_feat| PR
@@ -157,7 +158,10 @@ INPUT (per frame t, 4 frames in sequence):
   │   │                                                                          │  │
   │   │  DeformableCrossAttention   (ported from StreamPETR DeformableFeature-  │  │
   │   │                              AggregationCuda)                            │  │
-  │   │   reference_points = refined_xyz                                         │  │
+  │   │   reference_points = init_xyz   (verified in segmentor.py:148;           │  │
+  │   │     FIXED across all 6 decoder layers — NOT iteratively refined.         │  │
+  │   │     parent.offset is applied AFTER the decoder returns, so the           │  │
+  │   │     cross-attn always samples around the original FPS+ε positions.)      │  │
   │   │   per query × 6 cams × 4 levels × 13 sample points:                      │  │
   │   │     offsets       = sample_offset_net(query) → (..., 13, 2)              │  │
   │   │     weights       = weights_fc(query) → (..., 13)  ← INIT TO ZERO        │  │
@@ -587,6 +591,312 @@ out whether the opacity collapse is a downstream symptom of broken position
 learning, or its own pathology. The companion experiments below help
 narrow that down.
 
+## Diagram 4 — Barebones recipe (`--barebones`) — paper Table 3 ablation 1 + Table 4 row 1 + Table 5 row 1
+
+The current training plan. Strips the recipe down to **the single loss term
+plus the simplest possible architectural config**:
+
+- **Loss**: only L_depth at dt=0 (paper Table 3 row e — 20.25 mIoU, ~94% of the pretraining gain)
+- **Propagation**: **None** (paper Table 4 row 1 — 17.92 mIoU baseline). `T_queue=1`, no cross-frame memory.
+- **Velocity**: **None in both pretrain and occ-est** (paper Table 5 row 1 — 20.07 mIoU baseline). No warps → velocity head structurally unreachable; Stage 2 not built.
+- **Sequence**: **T_seq=1** (single frame per sample). No temporal context, no memory queue lookback.
+- **Query init**: **LiDAR (32-line) + ε** (paper Table 8 row 2 — 21.60 mIoU, tied with best). Already implemented in `S2GOLifter`; switching to other rows (occupied voxel, 16-line LiDAR, RGB depth) costs implementation work without meaningful mIoU upside (spread across all four rows is only 0.62 mIoU).
+
+`L_denoise` is not computed at all (the `den_loss` call is skipped entirely; the
+`L_den` column in the train log reads `nan`); no L_rgb; no ±0.5s warps. Velocity
+row is structurally unreachable from the loss because v never multiplies a
+non-zero dt.
+
+**Why barebones first:** with every paper option turned off, anything that goes
+wrong is attributable to the *single* remaining mechanism (depth render at dt=0
+on a single frame). Once L_depth converges cleanly at this config, we add back
+one piece at a time (propagation → T_queue=4; velocity → warps; etc.) and
+measure each addition's contribution.
+
+**This is now the implicit default.** Running
+
+    python -m s2go.tools.overfit [non-recipe flags...]
+
+with no recipe flag (no `--denoise-only`, `--depth-only`, `--barebones`, or
+`--full-recipe`) gives barebones. The `--barebones` flag still exists as an
+explicit alias for clarity. To opt OUT and run the paper-spec full Eq. 8
+recipe (T_seq=4, T_queue=4, denoise + depth + rgb + ±0.5s warps), pass:
+
+    python -m s2go.tools.overfit --full-recipe [non-recipe flags...]
+
+Argparse defaults: `--t-seq=1`, `--t-queue=1`, `--lr-schedule constant`.
+`--full-recipe` overrides t_seq/t_queue back to 4 (but keeps the constant
+LR by default; pass `--lr-schedule cosine` explicitly for paper-spec).
+
+**LR schedule note:** the default was switched from cosine to constant on
+2026-05-12 after we discovered that `CosineAnnealingLR(T_max=n_iters)`
+decays LR to *exactly 0* by the final iter, starving the model in the
+last ~20 % of any short diagnostic run. Constant LR (held at peak for all
+n_iters) avoids this. Use `--lr-schedule cosine --lr-min 1e-6` for full-
+scale paper-style training where the cosine horizon matches the run
+horizon.
+
+**Goal:** depth render becomes recognizable on real frames — visible road
+surface, vehicles silhouetted at correct ranges. This is the prerequisite
+before adding back denoise/warps.
+
+```mermaid
+flowchart TB
+    subgraph DATA4["Streaming loader · T_seq=1 per iter · full Part-1 (3,121 seq)"]
+        IMG4["imgs (1, 6, 3, 256, 704)"]
+        LID4["lidar_pts + lidar_depth GT"]
+    end
+
+    subgraph BB4["R50 + FPN — TRAINABLE (lr · 0.25 backbone-mult)"]
+        BBN4["ResNet-50 to FPN<br/>BN in train mode, grads flow"]
+    end
+    IMG4 --> BBN4
+
+    subgraph LIFT4["S2GOLifter · FPS+ε  (Table 8 row 2: LiDAR 32-line, 21.60 mIoU)"]
+        FPS4["fps · K=900"]
+        EPS4["plus epsilon · U-1,+1"]
+        FPS4 --> EPS4
+    end
+    LID4 --> FPS4
+
+    subgraph SEG4["S2GOSegmentor · TRAINABLE · gradient checkpointing · bf16"]
+        POSMLP4["pos_mlp · Linear ReLU Linear"]
+        TD4["TemporalDecoder x6<br/>self-attn / deformable cross-attn / FFN<br/>dropout 0.1<br/>(no past-query concat; T_queue=1)"]
+        PR4["ParentRefiner<br/>offset (trains) / opacity (trains) / velocity (NO grad)"]
+        CH4["ChildGaussianHead<br/>child-offset / scale / rotation / opacity (all train)<br/>RGB rows: zero gradient (render_mode='D')"]
+        ASM4["assemble_gaussians<br/>K x J = 9,000 flat Gaussians"]
+    end
+
+    EPS4 --> POSMLP4
+    POSMLP4 --> TD4
+    EPS4 -->|"reference_points = init_xyz<br/>(FIXED across all 6 layers)"| TD4
+    BBN4 -->|image features| TD4
+    TD4 --> PR4
+    PR4 -->|parent.feat| CH4
+    PR4 -->|offset, opa| ASM4
+    CH4 -->|child outputs| ASM4
+    EPS4 -->|init_xyz| ASM4
+
+    %% Render - depth only, no warps
+    ASM4 -->|"Gaussians: means/scales/quats/opa"| RENDER4["gsplat render_mode='D'<br/>(depth-only, dt=0 only)"]
+
+    %% Loss - L_depth at dt=0 is the ONLY gradient source
+    RENDER4 --> LDEP4["L_depth<br/>masked L1 vs LiDAR depth<br/>dt=0 only (1 bucket)"]
+    LDEP4 --> LTOT4["L_total = 1 · L_depth"]
+
+    %% L_denoise: NOT computed at all in depth_only mode
+    SKIPDEN4["L_denoise: NOT COMPUTED<br/>(skipped in depth_only mode;<br/>log column reads 'nan')"]:::bad
+    FPS4 -.-x SKIPDEN4
+
+    %% No warps -> velocity has no gradient path
+    NOWARP4["dt=0 only -> v never multiplied -> velocity row has no grad path<br/>(Table 5 row 1: Velocity=None in pretrain AND occ-est)"]:::bad
+    PR4 -.->|"velocity column"| NOWARP4
+
+    %% MemoryQueue + Propagator DISABLED (barebones config)
+    NOPROP4["MemoryQueue + δ-NMS Propagator<br/>DISABLED (T_queue=1)<br/>Table 4 row 1: Propagation=None<br/>no cross-frame query memory"]:::bad
+
+    %% Optimizer
+    LTOT4 -.->|"AdamW lr=4e-4 (seg) · lr=1e-4 (backbone) · constant (default)"| OPT4["Update: child offset/scale/rot/opa<br/>+ parent offset/opa<br/>(velocity + RGB rows: no update)"]
+
+    GOAL4["Goal:<br/>depth render becomes recognizable<br/>(road surface, vehicle silhouettes at correct ranges)<br/>before adding back propagation / velocity / denoise."]:::ok
+    OPT4 -.-> GOAL4
+
+    classDef ok fill:#dfd,stroke:#080,color:#040
+    classDef bad fill:#fdd,stroke:#a33,color:#700
+```
+
+**Detailed ASCII view (barebones recipe — `--barebones`):**
+
+```
+═══════════════════════════════════════════════════════════════════════════════════════════
+INPUT (single frame; T_seq=1, no temporal sequence):
+  imgs           : (1, 6, 3, 256, 704)   6 cameras × HW
+  lidar_pts      : (1, M≈30k, 3)         LIDAR_TOP frame
+  lidar_depth    : (1, 6, 256, 704)      sparse LiDAR-projected depth GT (per cam)
+  lidar2img      : (1, 6, 4, 4)
+  cam_K, viewmats: (1, 6, 3, 3), (1, 6, 4, 4)   for gsplat render
+  ego_pose       : (1, 4, 4)              (loaded but unused — no temporal warp/queue)
+═══════════════════════════════════════════════════════════════════════════════════════════
+Paper ablation mapping for this config:
+  Table 3 row e  : depth ✓, RGB ✗, denoise ✗     →  20.25 mIoU
+  Table 4 row 1  : Propagation = None            →  17.92 mIoU
+  Table 5 row 1  : Pretrain ✗, Occ Est ✗         →  20.07 mIoU
+  Table 8 row 2  : Query init = LiDAR (32-line)  →  21.60 mIoU (tied with best 21.61)
+  (Barebones intersects rows 3/4/5 — the floor we're trying to first reproduce.
+   Table 8 row 2 is our query-init source: full 32-line LiDAR sweep, FPS-sampled
+   to K=900, plus ε ∼ U(-1,+1) m noise. Kept as the default because it is
+   already implemented in S2GOLifter and is essentially tied with the
+   best-scoring source — switching would add code complexity without
+   meaningful mIoU upside.)
+═══════════════════════════════════════════════════════════════════════════════════════════
+
+  [imgs] ──────────────────────────────────────────────────┐
+                                                           │
+  ┌────────────── R50 + FPN  (TRAINABLE, lr × 0.25) ───────▼────────────────────────┐
+  │   ResNet-50 (ImageNet1k init) + FPN (mmdet)                                     │
+  │   feat_flatten: (B*6, 23,232, 768)                                              │
+  │   spatial_shapes: (4, 2)   level_start_index: (4,)                              │
+  │                                                                                 │
+  │   Grads flow back through L_depth → render → query_feat → cross-attn → here.   │
+  └─────────────────────────────────┬───────────────────────────────────────────────┘
+                                    │ image features (grad flows back)
+                                    │
+  [lidar_pts] ──┐                   │
+                ▼                   │
+  ┌─── S2GOLifter (no params) ──┐   │
+  │ fps → K=900 anchors         │   │
+  │ ε ∼ U(-1,+1)^(K×3)          │   │
+  │ init_xyz = anchors + ε      │   │
+  │ anchors_xyz (unused here:   │   │
+  │   no L_denoise computed)    │   │
+  │ query_feat (B,K,768)        │   │
+  └───────┬─────────────────────┘   │
+          │init_xyz (B,K,3)         │
+          ▼                         │
+  ┌── pos_mlp ──┐                   │
+  │ Linear-ReLU │                   │
+  │ -Linear     │                   │
+  └─────┬───────┘                   │
+        │anchor_embed (B,K,768)     │
+        ▼                           │
+  ┌─────────────────────────────────────────────────────────────────────────────────┐
+  │  TemporalDecoder (6 layers, gradient checkpointing, bf16)                       │
+  │  per layer: SelfAttn(query)   → DeformableXAttn(feat_flatten) → FFN             │
+  │              ▲                                                                  │
+  │              └── NO past-query concat: T_queue=1 means the queue is empty       │
+  │                  (Table 4 row 1: Propagation = None).                           │
+  │  Grad flows through ALL params (self-attn projs, ca weights_fc, FFN, LNs).      │
+  └─────────────────────────────┬───────────────────────────────────────────────────┘
+                                │ query_feat (B, K, 768)
+            ┌───────────────────┴─────────────────────┐
+            ▼                                         ▼
+  ┌── ParentRefiner ─────────┐         ┌─── ChildGaussianHead (ACTIVE) ──┐
+  │ trunk (MLP, trains)      │         │  expand: Linear(768, J·768)     │
+  │                          │         │  → (B,K,J=10,768)               │
+  │ head: Linear(768, 7)     │         │  head: Linear(768, 14):         │
+  │  [0:3] offset  ▲ TRAINS  │         │    [0:3]   child offset ▲ TRAINS│
+  │  [3:4] opa     ▲ TRAINS  │         │    [3:6]   scale (exp)  ▲ TRAINS│
+  │  [4:7] velocity ✗ NO grad│         │    [6:10]  rotation     ▲ TRAINS│
+  │   (dt=0 always)          │         │    [10:11] opacity      ▲ TRAINS│
+  └──────┬───────────────────┘         │    [11:14] RGB          ✗ NO grad
+         │ offset, opa                 │           (render_mode='D' skips
+         │                             │            color channel)        │
+         ▼                             └─────────┬───────────────────────┘
+  refined_xyz = init_xyz + parent.offset         │
+         │                                       │
+         ▼                                       ▼
+  ┌──────── assemble_gaussians (K=900 × J=10 = 9,000 Gaussians) ──────────────┐
+  │ means     = refined_xyz.unsqueeze(2) + child_offset                       │
+  │ scales    = exp(child_scale)                                              │
+  │ rotations = normalize(child_rot)        (quaternion)                      │
+  │ opacities = sigmoid(parent_opa) · sigmoid(child_opa)                      │
+  │ velocity  = parent_velocity              (used only if warps active)      │
+  │ colors    = None                         (render_mode='D' → unused)       │
+  └────────┬──────────────────────────────────────────────────────────────────┘
+           │ Gaussians (B, K·J, …)
+           ▼
+  ┌──── gsplat.render (render_mode='D', dt=0 only) ──────────────────────────┐
+  │ fully_fused_projection(means, scales, quats, viewmats, Ks) → 2D radii    │
+  │ rasterize_to_pixels(...) → depth image (B, 6, 256, 704, 1)               │
+  └────────┬─────────────────────────────────────────────────────────────────┘
+           │ depth_pred (B, 6, 256, 704)
+           ▼
+  ┌──── DepthRenderLoss (masked L1 vs lidar_depth GT, dt=0 only) ─────────────┐
+  │ mask = (lidar_depth > 0)                                                  │
+  │ L_depth = |depth_pred - lidar_depth|[mask].mean()                         │
+  └────────┬─────────────────────────────────────────────────────────────────┘
+           │
+           ▼
+       L_total = 1 · L_depth        ← ONE and ONLY active term
+       (L_den / L_rgb not computed; columns in log read 'nan')
+
+  ┌─── L_denoise: NOT COMPUTED in depth_only mode ────────────────────────────┐
+  │ den_loss(anchors_xyz, refined_xyz) is skipped entirely.                  │
+  │ history['denoise'] = NaN; the L_den column in the train log reads 'nan'. │
+  │ The anchors_xyz field is still produced by S2GOLifter but never read.    │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+  ┌─── δ-NMS Propagator + MemoryQueue: DISABLED (barebones, T_queue=1) ───────┐
+  │ T_queue=1 → memory_embedding / memory_reference_point buffers exist but  │
+  │ are never populated with prior-frame propagated queries (T_seq=1 means   │
+  │ no prior frame exists in this iter).                                     │
+  │ The δ-NMS propagator still runs per-frame and emits prop.{xyz,opa,feat}, │
+  │ but nothing downstream consumes its output across frames.                │
+  │ Paper Table 4 row 1: Propagation = None.                                 │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════════════════
+GRADIENT FLOW (barebones / depth-only):
+
+  L_depth
+    └─► depth_pred
+         └─► gsplat.render
+              ├─► means          (= refined_xyz + child_offset)
+              │    ├─► parent.offset      → ParentRefiner.head[0:3]     ▲ UPDATED
+              │    └─► child_offset       → ChildGaussianHead.head[0:3] ▲ UPDATED
+              │         └─► expand + trunk → ChildGaussianHead trunk    ▲ UPDATED
+              ├─► scales         → ChildGaussianHead.head[3:6]          ▲ UPDATED
+              ├─► rotations      → ChildGaussianHead.head[6:10]         ▲ UPDATED
+              └─► opacities      → ChildGaussianHead.head[10:11]        ▲ UPDATED
+                                  + ParentRefiner.head[3:4]             ▲ UPDATED
+
+         All paths flow back through query_feat:
+              └─► TemporalDecoder.layers[0..5]   ← UPDATED (all 6 layers)
+                   ├─► self_attn.{q,k,v,out}_proj
+                   ├─► cross_attn (deformable)   ← incl. weights_fc (init=0)
+                   ├─► ffn.[Linear→Linear]
+                   └─► all LayerNorms
+                   └─► feat_flatten (image features)
+                        └─► R50 + FPN            ← UPDATED (lr · 0.25)
+
+  NOT UPDATED (zero gradient — structurally unreachable):
+    ParentRefiner.head.weight[4:7]    (velocity)    — dt=0 → v never multiplied
+    ChildGaussianHead.head.weight[11:14] (RGB)       — render_mode='D' skips colors
+
+  NOT COMPUTED at all in this recipe:
+    L_denoise — den_loss call skipped; no forward, no graph, no log entry.
+    L_rgb     — render_mode='D' has no color output; rgb_loss never invoked.
+═══════════════════════════════════════════════════════════════════════════════════════════
+```
+
+**Head-by-head training status (in this recipe):**
+
+| Head (row range) | Grad source | Status |
+|---|---|---|
+| `parent_refiner.head[0:3]` — parent offset | `means` via L_depth | **trains** |
+| `parent_refiner.head[3:4]` — parent opacity | `opacities` via L_depth alpha | **trains** |
+| `parent_refiner.head[4:7]` — velocity | `means + v·dt`, but dt=0 | **NO grad** ✗ |
+| `child_head.head[0:3]` — child offset | `means` via L_depth | **trains** |
+| `child_head.head[3:6]` — scale | render footprint | **trains** |
+| `child_head.head[6:10]` — rotation | render footprint | **trains** |
+| `child_head.head[10:11]` — child opacity | render alpha | **trains** |
+| `child_head.head[11:14]` — RGB | `colors` skipped in `render_mode='D'` | **NO grad** ✗ |
+
+Expected per-iter diagnostic signature: `gnorm_velocity ≈ 0` (same A/B
+proof we used to validate `--no-warp`); `gnorm_rgb ≈ 0`; all other head
+gnorms nonzero.
+
+**Why start here (vs. Diagram 3 which adds denoise + warps):**
+
+1. **Single loss term simplifies debugging.** If L_depth doesn't drop,
+   there's exactly one pathway to inspect: render → depth target.
+2. **Removes the denoise floor confound.** L_denoise plateauing at 1.5 m
+   on diverse data (the "trivial offset=0" symptom from the 5000-iter
+   run) was muddying earlier analysis. With L_denoise out of the
+   objective entirely, we can see whether L_depth alone moves the
+   Gaussian state into a useful regime.
+3. **Paper Table 3 says this works.** Row (e) — depth-only — already
+   reaches 20.25 mIoU. The remaining 1.4 mIoU is the marginal value of
+   adding denoise + RGB. We should not chase those until row (e) is
+   reproduced.
+4. **Lowest memory.** No RGB channel render, no SSIM, no warp triple-
+   render — should fit comfortably even without `--use-checkpoint`.
+
+**What this recipe will not tell us:**
+- Whether velocity supervision (Diagram 3's warps) actually helps mIoU —
+  this is a separate ablation, run after L_depth converges.
+- Whether the denoise floor is fundamental or just slow — also a follow-up.
+
 ## Side-by-side: why one worked, the other didn't
 
 ```mermaid
@@ -628,3 +938,22 @@ because the network is effectively different per sample.
    meaningful corrections.
 3. The per-sample FPS seed is **harmful** and should be removed.
 4. The path forward is **more epochs**, not more architectural diagnosis.
+
+---
+
+# Latest runs (chronological)
+
+| Run dir | Iters | Data | LR | Final L_depth | Notes |
+|---|---|---|---|---|---|
+| [`out/depth_only_50iter/`](../depth_only_50iter/) | 50 | cached 4 seq (T_seq=4, T_queue=4) | cosine→0 (bug) | 3.09 m | Depth-only T2 baseline; before `--barebones` flag existed |
+| [`out/depth_only_singleframe/`](../depth_only_singleframe/) | 500 | 1 fixed frame (T=1) | constant 1e-4 | **0.586 m** | Single-frame architecture-capacity test; confirmed depth pathway works |
+| [`out/barebones_50iter/`](../barebones_50iter/) | 50 | cached 4 seq (T_seq=1, T_queue=1) | cosine→0 (bug) | 3.04 m | First barebones run; matches depth_only_50iter trajectory at 3.7× less wall + 56% less memory |
+| [`out/barebones_500iter/`](../barebones_500iter/) | 500 | cached 4 seq (T_seq=1, T_queue=1) | cosine→0 (bug) | 1.94 m | First long barebones; broke past the 50-iter "plateau"; revealed the cosine→0 LR bug |
+| [`out/barebones_full_part1_5000iter/`](../barebones_full_part1_5000iter/) | 5000 | **streaming Part 1, 3,376 unique seq** | **constant 1e-4 (fix)** | (running) | First streaming barebones; uses `python -u` (hacks.md H4); ~110-min ETA |
+
+**Implicit recipe evolution:**
+- Pre-2026-05-12: T_seq=4, T_queue=4, depth+denoise+warps, cosine→0 LR
+- Post-2026-05-12: T_seq=1, T_queue=1, depth-only, constant LR — barebones default (Table 3 row e + Table 4 row 1 + Table 5 row 1 + Table 8 row 2 of paper)
+
+Both H3 (LIDAR_TOP `+y forward`) and H4 (`PYTHONUNBUFFERED=1`) live in
+[`hacks.md`](../../hacks.md).

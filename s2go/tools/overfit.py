@@ -19,7 +19,7 @@ import time
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, ConstantLR
 
 from ..datasets.nusc_loader import NuScenesLoader
 from ..models.backbone.r50_fpn import R50FPNBackbone
@@ -144,7 +144,8 @@ def _warp_gaussians_means(G, dt: float, T_t_to_n: torch.Tensor):
 
 def compute_stage1_loss(outputs, sequence, lambdas, losses, device,
                         warp_dts=(-0.5, +0.5), use_rgb: bool = True,
-                        denoise_only: bool = False):
+                        denoise_only: bool = False,
+                        depth_only: bool = False):
     """Render each frame's gaussians (+ ±0.5 s warped renders), compute Eq. 8.
 
     outputs:  list of T FrameOutput from S2GOSegmentor
@@ -154,6 +155,11 @@ def compute_stage1_loss(outputs, sequence, lambdas, losses, device,
     warp_dts: tuple of ±dt seconds for neighbor renders. Empty → t=0 only
               (the pre-fix behavior). Default (-0.5, +0.5) implements the
               paper's "current and neighboring keyframes (+/- 0.5s)" prose.
+    depth_only: Paper Table 3 ablation 1 — L_depth at dt=0 only. L_denoise is
+              not computed at all (den_loss call is skipped); the 'denoise'
+              field in the returned diagnostics is NaN and the L_den column
+              in the train log reads 'nan'. Caller should set use_rgb=False
+              and warp_dts=() (both auto-set when --depth-only is passed).
 
     Velocity-supervision rationale: at t=0 only, ∂L/∂velocity is zero (velocity
     is unused), so the velocity head receives no gradient. With dt ≠ 0 renders,
@@ -229,20 +235,29 @@ def compute_stage1_loss(outputs, sequence, lambdas, losses, device,
                     L_rgb[dt_sec] = L_rgb[dt_sec] + rgb_loss(rgb_w, neighbor['imgs'][0].permute(0, 2, 3, 1))
                 n_dt[dt_sec] += 1
 
-        # Denoise is t-only (no warp dimension)
-        L_d = L_d + den_loss(out.anchors_xyz, out.refined_xyz)
+        # Denoise: skipped entirely in depth_only mode (no compute, no log).
+        # Otherwise contributes to the objective as a training term.
+        if not depth_only:
+            L_d = L_d + den_loss(out.anchors_xyz, out.refined_xyz)
 
     # Aggregate. Gradient uses sum / total — same as before this split.
     n_total = max(sum(n_dt.values()), 1)
-    L_d_avg     = L_d / T
     L_dp_total_t  = sum(L_dp.values()) / n_total
-    if use_rgb:
+    if depth_only:
+        # Pure L_depth objective. Denoise not computed at all → NaN.
+        L_total = lam_dp * L_dp_total_t
+        denoise_diag = float('nan')
+    elif use_rgb:
+        L_d_avg = L_d / T
         L_rgb_total_t = sum(L_rgb.values()) / n_total
         L_total = lam_d * L_d_avg + lam_dp * L_dp_total_t + lam_rgb * L_rgb_total_t
+        denoise_diag = L_d_avg.item()
     else:
         # RGB compute skipped — L_rgb[dt] are still Python 0.0, can't .item().
         # Drop the term from the objective entirely and report NaN downstream.
+        L_d_avg = L_d / T
         L_total = lam_d * L_d_avg + lam_dp * L_dp_total_t
+        denoise_diag = L_d_avg.item()
 
     def _avg(v, n):
         if n == 0 or not hasattr(v, 'item'):
@@ -250,7 +265,7 @@ def compute_stage1_loss(outputs, sequence, lambdas, losses, device,
         return (v / n).item()
     rgb_combined = (sum(L_rgb.values()) / n_total).item() if use_rgb else float('nan')
     return L_total, {
-        'denoise':       L_d_avg.item(),
+        'denoise':       denoise_diag,
         'depth':         L_dp_total_t.item(),
         'rgb':           rgb_combined,
         # Three-bucket split (NaN if dt absent for boundary frames OR RGB off):
@@ -272,6 +287,7 @@ def compute_stage1_loss(outputs, sequence, lambdas, losses, device,
 # ────────────────────────────────────────────────────────────────────────────
 def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
          lr: float = 4e-4, lr_backbone_mult: float = 0.25,
+         grad_clip_max_norm: float = 10.0,
          num_layers: int = 2, num_pts: int = 4,
          feedforward_channels: int = 2048,
          mixed_precision: bool = False,
@@ -282,19 +298,41 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
          use_rgb: bool = True,
          full_data: bool = False,
          denoise_only: bool = False,
+         depth_only: bool = False,
+         barebones: bool = False,
+         t_seq: int = 4,
+         t_queue: int = 4,
+         lr_schedule: str = 'constant',
+         lr_min: float = 1e-5,
          freeze_backbone: bool = False,
          limit_data: int = None,
          history_path: str = None,
          save_path: str = None):
+    assert not (denoise_only and depth_only), \
+        "--denoise-only and --depth-only are mutually exclusive"
     # Denoise-only convenience: overrides
     if denoise_only:
         use_rgb = False
         warp_dts = ()
+    # Depth-only convenience: paper Table 3 ablation 1 (LiDAR+ε, depth-only, dt=0).
+    # No L_denoise gradient, no L_rgb, no warps → velocity stays un-supervised.
+    if depth_only:
+        use_rgb = False
+        warp_dts = ()
+    # Barebones: paper Table 4 row 1 (Propagation=None) + Table 5 row 1 (Velocity=None
+    # in both pretrain and occ-est). Single-frame loader, no temporal queue, depth-only.
+    # Implies: T_seq=1, T_queue=1, depth_only=True, use_rgb=False, warp_dts=().
+    if barebones:
+        depth_only = True
+        use_rgb = False
+        warp_dts = ()
+        t_seq = 1
+        t_queue = 1
     device = "cuda"
     torch.manual_seed(0)
     torch.cuda.empty_cache()
 
-    loader = NuScenesLoader(T=4, verbose=False)
+    loader = NuScenesLoader(T=t_seq, verbose=False)
     n_dataset = len(loader)
     if limit_data is not None and limit_data > 0:
         n_dataset = min(n_dataset, int(limit_data))
@@ -325,7 +363,7 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
         num_levels=4, num_cams=6,
         num_pts=num_pts,              # paper-spec: 13 (T2); we default 4 (T0/T1)
         feedforward_channels=feedforward_channels,  # paper-spec: 3072 (T2); 2048 (T0/T1)
-        T_queue=4,
+        T_queue=t_queue,
         use_checkpoint=use_checkpoint,
     ).to(device)
     n_back = sum(p.numel() for p in backbone.parameters() if p.requires_grad)
@@ -350,7 +388,19 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
              'lr': lr * lr_backbone_mult},
             {'params': seg.parameters(), 'lr': lr},
         ], weight_decay=0.01)
-    scheduler = CosineAnnealingLR(optim, T_max=n_iters)
+    # LR schedule. For short diagnostic runs (50-500 iters), cosine-to-zero
+    # makes the last 20% of iters effectively useless because lr→0. Default is
+    # 'constant' so LR stays at its peak throughout. Use 'cosine' (decays to
+    # lr_min) for a paper-spec multi-epoch run where decay matches horizon.
+    if lr_schedule == 'cosine':
+        scheduler = CosineAnnealingLR(optim, T_max=n_iters, eta_min=lr_min)
+        print(f"    LR schedule: cosine (T_max={n_iters}, eta_min={lr_min:.0e})")
+    elif lr_schedule == 'constant':
+        # factor=1.0, total_iters=n_iters keeps LR at peak the entire run.
+        scheduler = ConstantLR(optim, factor=1.0, total_iters=n_iters)
+        print(f"    LR schedule: constant (peak lr held for all {n_iters} iters)")
+    else:
+        raise ValueError(f"unknown lr_schedule '{lr_schedule}' (use 'cosine' or 'constant')")
 
     # Stage-1 losses (Eq. 8); λ defaults from Stage1_design.md D6
     rgb_l1_w = 1.0 - rgb_ssim_weight if rgb_ssim_weight > 0 else 1.0
@@ -358,6 +408,9 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
                 RGBRenderLoss(l1_weight=rgb_l1_w, ssim_weight=rgb_ssim_weight))
     if denoise_only:
         lambdas = (1.0, 0.0, 0.0)
+    elif depth_only:
+        # Paper Table 3 ablation 1: L_depth only at dt=0.
+        lambdas = (0.0, 1.0, 0.0)
     else:
         # Recipe: depth + denoise (+ warps). RGB dropped for "first pass" — saves
         # ~0.3 mIoU at paper-spec (Table 3 (d)→(e)) but removes λ_rgb/SSIM tuning,
@@ -365,6 +418,15 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
         lambdas = (10.0, 1.0, 1.0 if use_rgb else 0.0)
     if denoise_only:
         print(f"    DENOISE-ONLY (--denoise-only): λ=(1, 0, 0), no rendering, no warps")
+    elif depth_only:
+        print(f"    DEPTH-ONLY (--depth-only): λ=(0, 1, 0), L_depth at dt=0 only, "
+              f"no warps, no RGB (paper Table 3 ablation 1).")
+        if barebones:
+            print(f"      BAREBONES: T_seq=1, T_queue=1 — paper Table 4 row 1 "
+                  f"(Propagation=None) + Table 5 row 1 (Velocity=None).")
+        print(f"      trains: child {{offset,scale,rotation,opacity}}, "
+              f"parent {{offset,opacity}}.")
+        print(f"      does NOT train: velocity (no warps → no grad path).")
     elif use_rgb:
         print(f"    RGB loss form: {rgb_l1_w:.2f}·L1 + {rgb_ssim_weight:.2f}·(1-SSIM)"
               f"{' (SSIM disabled)' if rgb_ssim_weight == 0 else ''}")
@@ -408,6 +470,8 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
     seg.train(); backbone.train()
     history = []
     t_start = time.time()
+    n_skipped = 0
+    current_sample_token = "(cached)"     # default; overridden in streaming branch
 
     def _fmt_split(v_t0, v_minus, v_plus, fmt):
         def _f(v):
@@ -423,6 +487,7 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
             # denoise target jitters per-iter (hacks.md H1) and the model
             # can't converge on streaming data.
             tok = seq_cpu[0].get('_sample_token', str(i))
+            current_sample_token = tok    # for NaN-guard diagnostics
             torch.manual_seed(hash(tok) & 0x7FFFFFFF)
             seq = [to_device(f, device) for f in seq_cpu]
         else:
@@ -446,9 +511,12 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
             outputs = seg(sequence_with_feat)
             L, parts = compute_stage1_loss(outputs, sequence_with_feat, lambdas, losses,
                                             device, warp_dts=warp_dts, use_rgb=use_rgb,
-                                            denoise_only=denoise_only)
+                                            denoise_only=denoise_only,
+                                            depth_only=depth_only)
 
-        # Backward + step (paper §B: gradient clip max_norm=35)
+        # Backward + step (gradient clip; tightened from paper's 35 → 10 to
+        # catch gsplat-backward overflows on degenerate streaming scenes before
+        # they cascade to inf, then to NaN via bf16 `inf × (max/inf)` arithmetic).
         optim.zero_grad()
         scaler.scale(L).backward()
         scaler.unscale_(optim)
@@ -466,9 +534,25 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
         queue_stats = _queue_propagator_stats(seg, last_out.prop)
 
         gnorm = nn.utils.clip_grad_norm_(
-            list(backbone.parameters()) + list(seg.parameters()), max_norm=35.0)
-        scaler.step(optim)
-        scaler.update()
+            list(backbone.parameters()) + list(seg.parameters()),
+            max_norm=grad_clip_max_norm)
+
+        # ── NaN / inf guard ──────────────────────────────────────────────
+        # If either the loss or the post-clip gradient norm is non-finite,
+        # skip the optimizer step entirely. This prevents a single bad scene
+        # from poisoning all weights with NaN (see hacks.md once added, plus
+        # `out/barebones_full_part1_5000iter/` post-mortem at iter 2919).
+        finite = bool(torch.isfinite(L).item() and torch.isfinite(gnorm).item())
+        skipped = not finite
+        if skipped:
+            n_skipped += 1
+            print(f"  [skip] iter {i}: non-finite loss/gnorm "
+                  f"(L={L.item():.3g}, gnorm={gnorm.item():.3g}, "
+                  f"token={current_sample_token})", flush=True)
+            optim.zero_grad(set_to_none=True)        # drop the bad gradient
+        else:
+            scaler.step(optim)
+            scaler.update()
         scheduler.step()
 
         # Everything to history (full detail, every iter).
@@ -477,6 +561,8 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
             'total':       L.item(),
             'gnorm':       gnorm.item(),
             'lr':          scheduler.get_last_lr()[0],
+            'skipped':     skipped,
+            'sample_token': current_sample_token,
             **head_grads,
             **{f'gauss_{k}_{stat}': v[stat]
                 for k, v in gauss_stats.items() for stat in v},
@@ -498,15 +584,22 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
 
     print()
     # ── Verify monotonic-ish decrease ─────────────────────────────────────
-    first_5 = sum(h['total'] for h in history[:5]) / 5
-    last_5  = sum(h['total'] for h in history[-5:]) / 5
+    # Use only finite, non-skipped iters for the summary so NaN/inf can't
+    # poison the verdict.
+    finite_hist = [h for h in history if not h.get('skipped', False)
+                                          and h['total'] == h['total']]
+    first_5 = sum(h['total'] for h in finite_hist[:5]) / max(len(finite_hist[:5]), 1)
+    last_5  = sum(h['total'] for h in finite_hist[-5:]) / max(len(finite_hist[-5:]), 1)
     drop = first_5 - last_5
     print(f"Final summary:")
-    print(f"  loss avg  first 5 iters: {first_5:.3f}")
-    print(f"  loss avg  last  5 iters: {last_5:.3f}")
+    print(f"  iters total       : {n_iters}")
+    print(f"  iters skipped (NaN/inf guard fired): {n_skipped}"
+          f"  ({100.0*n_skipped/n_iters:.1f}%)")
+    print(f"  loss avg  first 5 (finite) iters: {first_5:.3f}")
+    print(f"  loss avg  last  5 (finite) iters: {last_5:.3f}")
     print(f"  Δ = {drop:+.3f}  ({'GOOD' if drop > 0 else 'BAD: loss did not drop'})")
-    den_drop = (sum(h['denoise'] for h in history[:5]) -
-                sum(h['denoise'] for h in history[-5:])) / 5
+    den_drop = (sum(h['denoise'] for h in finite_hist[:5]) -
+                sum(h['denoise'] for h in finite_hist[-5:])) / max(len(finite_hist[:5]), 1)
     print(f"  L_denoise drop: {den_drop:+.3f} m  (target: significantly positive)")
     if drop > 0:
         print("\nS1.7e/f overfit smoke PASSED.")
@@ -528,7 +621,7 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
             'backbone':  backbone.state_dict(),
             'segmentor': seg.state_dict(),
             'config': {
-                'K': 900, 'J': 10, 'embed_dims': 768, 'T_queue': 4,
+                'K': 900, 'J': 10, 'embed_dims': 768, 'T_queue': t_queue, 'T_seq': t_seq,
                 'num_layers':           num_layers,
                 'num_pts':              num_pts,
                 'feedforward_channels': feedforward_channels,
@@ -578,6 +671,42 @@ if __name__ == "__main__":
     p.add_argument("--denoise-only", action="store_true",
                     help="run pure L_denoise (no depth, no rgb, no warp, no render). "
                          "Fastest path; isolates the position/coord-frame pathway.")
+    p.add_argument("--depth-only", action="store_true",
+                    help="run pure L_depth at dt=0 (no denoise grad, no rgb, no warp). "
+                         "Paper Table 3 ablation 1 (LiDAR+ε, depth-only, dt=0). Trains "
+                         "child offset/scale/rotation/opacity + parent offset/opacity; "
+                         "velocity stays un-supervised. Mutually exclusive with --denoise-only.")
+    p.add_argument("--barebones", action="store_true",
+                    help="explicit alias for the (now default) barebones recipe: "
+                         "T_seq=1, T_queue=1, depth-only loss. Kept for clarity; "
+                         "running with NO recipe flag now gives barebones implicitly.")
+    p.add_argument("--full-recipe", action="store_true",
+                    help="opt OUT of barebones default. Restores paper-spec: T_seq=4, "
+                         "T_queue=4, full Eq. 8 (denoise + depth + rgb + ±0.5s warps). "
+                         "Mutually exclusive with --denoise-only / --depth-only / --barebones.")
+    p.add_argument("--t-seq", type=int, default=1,
+                    help="number of frames per loader sequence. Default 1 "
+                         "(barebones; single-frame, no temporal context). "
+                         "Paper-spec is 4 (auto-set by --full-recipe).")
+    p.add_argument("--t-queue", type=int, default=1,
+                    help="memory queue length for temporal propagation. Default 1 "
+                         "(barebones; Figure 6 leftmost point ≈ 18.4 mIoU). "
+                         "Paper-spec is 4 (auto-set by --full-recipe).")
+    p.add_argument("--lr", type=float, default=4e-4,
+                    help="peak segmentor LR (backbone gets ×0.25). Default 4e-4 "
+                         "(paper-spec). Lower (e.g. 2e-4 or 1e-4) recommended for "
+                         "streaming + bf16 to reduce gradient explosion risk.")
+    p.add_argument("--grad-clip", type=float, default=10.0,
+                    help="max_norm for clip_grad_norm_. Default 10 (tightened from "
+                         "paper's 35 after the iter-2919 bf16 gradient-explosion "
+                         "incident). Lower = more aggressive overflow protection.")
+    p.add_argument("--lr-schedule", choices=['constant', 'cosine'], default='constant',
+                    help="LR schedule. 'constant' (default for short diagnostic runs) "
+                         "holds peak LR for all n_iters. 'cosine' decays to --lr-min "
+                         "over n_iters; appropriate for paper-spec multi-epoch runs.")
+    p.add_argument("--lr-min", type=float, default=1e-5,
+                    help="minimum LR for the cosine schedule. Ignored when "
+                         "--lr-schedule=constant. Default 1e-5 (avoid lr=0 starvation).")
     p.add_argument("--freeze-backbone", action="store_true",
                     help="freeze backbone (eval mode + no grad). Reduces optimizer noise; "
                          "useful for denoise-only diagnostic runs.")
@@ -590,7 +719,28 @@ if __name__ == "__main__":
                     help="if set, write final {backbone, segmentor} weights "
                          "(+ arch config) to this .pt at end of training.")
     a = p.parse_args()
+
+    # ── Resolve recipe defaults ────────────────────────────────────────────
+    # Mutually exclusive recipe flags
+    n_recipe = sum([a.denoise_only, a.depth_only, a.barebones, a.full_recipe])
+    if n_recipe > 1:
+        p.error("Pass at most one of --denoise-only / --depth-only / --barebones / --full-recipe")
+
+    if a.full_recipe:
+        # Paper-spec full Eq. 8 recipe — overrides barebones defaults.
+        a.t_seq = 4
+        a.t_queue = 4
+        a.depth_only = False
+        # Leave --no-warp / --no-rgb as-is so user can still subtract pieces.
+    elif a.denoise_only:
+        pass     # denoise_only path handles its own overrides inside main()
+    else:
+        # No recipe flag (or --barebones / --depth-only): treat as barebones.
+        # depth_only=True is the gate that disables denoise compute + RGB + warps.
+        a.depth_only = True
+
     main(n_iters=a.n_iters, log_every=a.log_every,
+         lr=a.lr, grad_clip_max_norm=a.grad_clip,
          num_layers=a.num_layers, num_pts=a.num_pts,
          feedforward_channels=a.feedforward_channels,
          mixed_precision=a.mixed_precision, amp_dtype=a.amp_dtype,
@@ -600,6 +750,12 @@ if __name__ == "__main__":
          use_rgb=(not a.no_rgb),
          full_data=a.full_data,
          denoise_only=a.denoise_only,
+         depth_only=a.depth_only,
+         barebones=a.barebones,
+         t_seq=a.t_seq,
+         t_queue=a.t_queue,
+         lr_schedule=a.lr_schedule,
+         lr_min=a.lr_min,
          freeze_backbone=a.freeze_backbone,
          limit_data=a.limit_data,
          history_path=a.history_path,
