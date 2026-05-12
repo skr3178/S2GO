@@ -696,7 +696,7 @@ flowchart TB
     NOPROP4["MemoryQueue + δ-NMS Propagator<br/>DISABLED (T_queue=1)<br/>Table 4 row 1: Propagation=None<br/>no cross-frame query memory"]:::bad
 
     %% Optimizer
-    LTOT4 -.->|"AdamW lr=4e-4 (seg) · lr=1e-4 (backbone) · constant (default)"| OPT4["Update: child offset/scale/rot/opa<br/>+ parent offset/opa<br/>(velocity + RGB rows: no update)"]
+    LTOT4 -.->|"AdamW lr=2e-4 seg / 5e-5 backbone (post-v1-incident); constant; grad-clip 10; NaN/inf guard"| OPT4["Update: child offset/scale/rot/opa<br/>+ parent offset/opa<br/>(velocity + RGB rows: no update)<br/>SKIP optimizer.step() if loss or gnorm non-finite"]
 
     GOAL4["Goal:<br/>depth render becomes recognizable<br/>(road surface, vehicle silhouettes at correct ranges)<br/>before adding back propagation / velocity / denoise."]:::ok
     OPT4 -.-> GOAL4
@@ -949,11 +949,27 @@ because the network is effectively different per sample.
 | [`out/depth_only_singleframe/`](../depth_only_singleframe/) | 500 | 1 fixed frame (T=1) | constant 1e-4 | **0.586 m** | Single-frame architecture-capacity test; confirmed depth pathway works |
 | [`out/barebones_50iter/`](../barebones_50iter/) | 50 | cached 4 seq (T_seq=1, T_queue=1) | cosine→0 (bug) | 3.04 m | First barebones run; matches depth_only_50iter trajectory at 3.7× less wall + 56% less memory |
 | [`out/barebones_500iter/`](../barebones_500iter/) | 500 | cached 4 seq (T_seq=1, T_queue=1) | cosine→0 (bug) | 1.94 m | First long barebones; broke past the 50-iter "plateau"; revealed the cosine→0 LR bug |
-| [`out/barebones_full_part1_5000iter/`](../barebones_full_part1_5000iter/) | 5000 | **streaming Part 1, 3,376 unique seq** | **constant 1e-4 (fix)** | (running) | First streaming barebones; uses `python -u` (hacks.md H4); ~110-min ETA |
+| [`out/barebones_full_part1_5000iter/`](../barebones_full_part1_5000iter/) ⚠ v1 | 5000 | streaming Part 1 (3,376 seq) | constant 1e-4, **grad-clip 35**, **no NaN guard** | 1.94 m best (iter 977), then **NaN-corrupted iter 3359→4999** | **First streaming barebones FAILED**. Hit bf16 gradient overflow in gsplat backward at iter 2907 → `inf` total gnorm at 2919 → `inf × (max/inf) = NaN` in bf16 grad-clip arithmetic at 3359. Final summary verdict "BAD" was a NaN-contamination artifact. |
+| [`out/barebones_full_part1_5000iter_v2/`](../barebones_full_part1_5000iter_v2/) ✓ v2 | 5000 | streaming Part 1 (3,376 seq) | constant **2e-4** (halved), **grad-clip 10** (tightened), **NaN/inf guard ON** | **2.45 m best (iter 2300)**, 4.42 m at iter 4999, 0 skips | **Clean run.** Passed the v1 iter-2919 explosion zone with zero incidents. Lowest L_depth comparable to v1's pre-explosion best (2.37 m at iter 977) but reached *and held* without instability. Saved usable 413 MB checkpoint. |
+
+**Eval comparison — 500-iter cached vs 5000-iter v2 streaming:**
+
+| Metric | 500-iter cached (4 seq) | 5000-iter v2 (3,376 seq) | Δ | Interpretation |
+|---|---|---|---|---|
+| Nearest-LiDAR distance (mean) | 2.21 m | 2.44 m | +0.23 m | similar — generalization holding |
+| Opacity max | 0.94 | 0.74 | **−0.20** | v2 never gets near-saturated; expected when balancing 3k scenes |
+| Scale L2 distribution | bimodal (0.3 m + 2.5 m peaks) | broader unimodal (0.4–3.4 m) | — | v2 lost the explicit parent/child scale separation |
+| **topk_opacity mean** | **0.985** | **0.519** | **−0.47** | survivors less authoritative on diverse data |
+| Rendered depth range | [0, 70 m] | [0, 63 m] | -7 m | both span scene scale, no degenerate constant |
 
 **Implicit recipe evolution:**
-- Pre-2026-05-12: T_seq=4, T_queue=4, depth+denoise+warps, cosine→0 LR
-- Post-2026-05-12: T_seq=1, T_queue=1, depth-only, constant LR — barebones default (Table 3 row e + Table 4 row 1 + Table 5 row 1 + Table 8 row 2 of paper)
+- 2026-05-11: T_seq=4, T_queue=4, depth+denoise+warps, cosine→0 LR
+- 2026-05-12 (early): T_seq=1, T_queue=1, depth-only, constant LR — barebones default (Table 3 row e + Table 4 row 1 + Table 5 row 1 + Table 8 row 2)
+- 2026-05-12 (after v1 failure): **lr 4e-4 → 2e-4, grad-clip 35 → 10, NaN/inf guard added**. See "v1 vs v2" rows above. Skip-on-NaN behavior wired in [`overfit.py`](../../s2go/tools/overfit.py) at the train loop's clip step; logs `sample_token` of any skipped iter for offline triage.
 
-Both H3 (LIDAR_TOP `+y forward`) and H4 (`PYTHONUNBUFFERED=1`) live in
-[`hacks.md`](../../hacks.md).
+**Hacks accumulated** (full text in [`hacks.md`](../../hacks.md)):
+- H1: `torch_cluster.fps` non-deterministic without explicit seeding
+- H2: Stage-1 architecture overfit is slow, not stuck — needs ≥500 iters per sample
+- H3: LIDAR_TOP frame is **`+y` forward**, not `+x`
+- H4: Python stdout block-buffers under nohup — use `PYTHONUNBUFFERED=1` + `python -u`
+- (implicit "H5"): bf16 + unguarded grad clip can produce `NaN` from `inf × 0`; documented in v1 post-mortem above
