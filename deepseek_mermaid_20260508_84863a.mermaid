@@ -1,0 +1,41 @@
+flowchart TD
+    subgraph Input
+        I[Multi-view Images I_t] --> CNN[CNN Backbone\nResNet-50]
+        CNN --> Feat[2D Image Features F_t]
+        
+        L[LiDAR Points pts_t] --> FPS[Furthest-Point Sampling\n+ noise ε]
+    end
+
+    subgraph Temporal_Queries
+        Q_past[Past Queries Queue\nQ_{t-τ}...Q_{t-1}] --> TempTrans[Temporal Transformer\nself-attention + deformable cross-attention]
+        Feat --> TempTrans
+        FPS --> InitQ[Initialize current queries\nQ_t (positions + features)]
+        InitQ --> TempTrans
+    end
+
+    subgraph Decoding
+        TempTrans --> QueryOutput[Per-query outputs:\n• offset oⁱ\n• opacity aⁱ\n• velocity vⁱ\n• J Gaussian offsets oʲⁱ]
+        QueryOutput --> Gaussians[Generate J Gaussians per query\nG_t = {position, rotation, scale, opacity}]
+    end
+
+    subgraph Stage1_Pretrain
+        Gaussians --> Render[Render depth & RGB\n(warp with vⁱ to neigh. frames)]
+        Render --> LossDepth[L_depth]
+        Render --> LossRGB[L_rgb]
+        Gaussians --> Denoise[Denoising loss: L2 between\npredicted pos (pⁱ+oⁱ) and FPS(pts_t)]
+        LossDepth & LossRGB & Denoise --> TotalLoss1[Total pre‑training loss]
+    end
+
+    subgraph Stage2_Occupancy
+        Gaussians --> Splat[Opacity‑weighted Gaussian‑to‑voxel splatting]
+        Splat --> Occupancy[Semantic occupancy volume]
+        Occupancy --> CrossEntropy[Cross‑entropy loss vs GT]
+    end
+
+    subgraph Propagation
+        QueryOutput --> Select[Select top‑k opacities\nenforce min distance δ]
+        Select --> PushQueue[Push to queue for next timestep]
+        PushQueue --> Q_past
+    end
+
+    Stage1_Pretrain --> |Pretrained weights| Stage2_Occupancy

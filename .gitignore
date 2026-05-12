@@ -10,6 +10,21 @@ taming-3dgs/
 # Symlink pointing outside this folder (target lives in reference_code/)
 GaussianFormer
 
+# Vendored upstream repos (held locally for reference, not redistributed)
+reference_code/
+
+# nuScenes data + downloaders (heavy; user-managed)
+data/
+nuscenes/
+BaiduPCS-Go-v4.0.1-linux-amd64/
+
+# Kernel exploration / large diff blobs
+kernel/
+scripts/kernel_diff/
+
+# Claude Code session state
+.claude/
+
 # --- Build artifacts ---
 **/build/
 **/*.egg-info/

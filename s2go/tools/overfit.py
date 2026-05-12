@@ -143,7 +143,8 @@ def _warp_gaussians_means(G, dt: float, T_t_to_n: torch.Tensor):
 
 
 def compute_stage1_loss(outputs, sequence, lambdas, losses, device,
-                        warp_dts=(-0.5, +0.5), use_rgb: bool = True):
+                        warp_dts=(-0.5, +0.5), use_rgb: bool = True,
+                        denoise_only: bool = False):
     """Render each frame's gaussians (+ ±0.5 s warped renders), compute Eq. 8.
 
     outputs:  list of T FrameOutput from S2GOSegmentor
@@ -161,14 +162,27 @@ def compute_stage1_loss(outputs, sequence, lambdas, losses, device,
     den_loss, dep_loss, rgb_loss = losses
     lam_d, lam_dp, lam_rgb = lambdas
     L_d = 0.0
-    # Three-bucket split by dt for L_depth / L_rgb: dt=-0.5, dt=0, dt=+0.5.
-    # Used for observability only; the backward signal uses (sum / total_count)
-    # — same gradient as before the split.
     L_dp  = {-0.5: 0.0, 0.0: 0.0, +0.5: 0.0}
     L_rgb = {-0.5: 0.0, 0.0: 0.0, +0.5: 0.0}
     n_dt  = {-0.5: 0,   0.0: 0,   +0.5: 0}
 
     T = len(outputs)
+
+    if denoise_only:
+        # Fast path: no rendering at all. Only L_denoise on each frame.
+        for out in outputs:
+            L_d = L_d + den_loss(out.anchors_xyz, out.refined_xyz)
+        L_d_avg = L_d / T
+        L_total = lam_d * L_d_avg
+        return L_total, {
+            'denoise':     L_d_avg.item(),
+            'depth':       float('nan'),
+            'rgb':         float('nan'),
+            'depth_minus': float('nan'), 'depth_t0': float('nan'), 'depth_plus': float('nan'),
+            'rgb_minus':   float('nan'), 'rgb_t0':   float('nan'), 'rgb_plus':   float('nan'),
+            'n_minus':     0, 'n_t0': 0, 'n_plus': 0,
+        }
+
     for t, (out, frame) in enumerate(zip(outputs, sequence)):
         viewmats = frame['viewmats'][0]                     # (N_cam, 4, 4)
         Ks       = frame['cam_K'][0]                        # (N_cam, 3, 3)
@@ -267,17 +281,28 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
          warp_dts=(-0.5, +0.5),
          use_rgb: bool = True,
          full_data: bool = False,
+         denoise_only: bool = False,
+         freeze_backbone: bool = False,
+         limit_data: int = None,
          history_path: str = None,
          save_path: str = None):
+    # Denoise-only convenience: overrides
+    if denoise_only:
+        use_rgb = False
+        warp_dts = ()
     device = "cuda"
     torch.manual_seed(0)
     torch.cuda.empty_cache()
 
     loader = NuScenesLoader(T=4, verbose=False)
     n_dataset = len(loader)
+    if limit_data is not None and limit_data > 0:
+        n_dataset = min(n_dataset, int(limit_data))
 
     if full_data:
-        print(f"Stage-1 run — {n_iters} iters STREAMING from {n_dataset} Part-1 sequences\n")
+        epochs_implied = n_iters / max(n_dataset, 1)
+        print(f"Stage-1 run — {n_iters} iters STREAMING from {n_dataset} sequences "
+              f"(≈ {epochs_implied:.1f} epochs)\n")
         print("[1/4] Streaming loader (sequences loaded on-demand per iter)…")
         sequences = None     # signal to load per-iter below
     else:
@@ -308,24 +333,39 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
     print(f"    backbone: {n_back/1e6:.1f} M trainable, segmentor: {n_seg/1e6:.1f} M trainable, "
           f"total: {(n_back+n_seg)/1e6:.1f} M")
 
+    # Optional: freeze backbone entirely (eval mode + no grad).
+    if freeze_backbone:
+        backbone.eval()
+        for p in backbone.parameters():
+            p.requires_grad = False
+        print("    backbone FROZEN (eval mode, no grad)")
+
     # ── Optimizer: AdamW with backbone-lr-scaled paramwise group (paper §B) ─
     print("[3/4] Building optimizer (AdamW, lr=4e-4, backbone ×0.25)…")
-    optim = AdamW([
-        {'params': [p for p in backbone.parameters() if p.requires_grad],
-         'lr': lr * lr_backbone_mult},
-        {'params': seg.parameters(), 'lr': lr},
-    ], weight_decay=0.01)
+    if freeze_backbone:
+        optim = AdamW(seg.parameters(), lr=lr, weight_decay=0.01)
+    else:
+        optim = AdamW([
+            {'params': [p for p in backbone.parameters() if p.requires_grad],
+             'lr': lr * lr_backbone_mult},
+            {'params': seg.parameters(), 'lr': lr},
+        ], weight_decay=0.01)
     scheduler = CosineAnnealingLR(optim, T_max=n_iters)
 
     # Stage-1 losses (Eq. 8); λ defaults from Stage1_design.md D6
     rgb_l1_w = 1.0 - rgb_ssim_weight if rgb_ssim_weight > 0 else 1.0
     losses = (DenoiseLoss(), DepthRenderLoss(),
                 RGBRenderLoss(l1_weight=rgb_l1_w, ssim_weight=rgb_ssim_weight))
-    # Recipe: depth + denoise (+ warps). RGB dropped for "first pass" — saves
-    # ~0.3 mIoU at paper-spec (Table 3 (d)→(e)) but removes λ_rgb/SSIM tuning,
-    # RGB-channel render activation, and the muddy-blob debug noise.
-    lambdas = (10.0, 1.0, 1.0 if use_rgb else 0.0)
-    if use_rgb:
+    if denoise_only:
+        lambdas = (1.0, 0.0, 0.0)
+    else:
+        # Recipe: depth + denoise (+ warps). RGB dropped for "first pass" — saves
+        # ~0.3 mIoU at paper-spec (Table 3 (d)→(e)) but removes λ_rgb/SSIM tuning,
+        # RGB-channel render activation, and the muddy-blob debug noise.
+        lambdas = (10.0, 1.0, 1.0 if use_rgb else 0.0)
+    if denoise_only:
+        print(f"    DENOISE-ONLY (--denoise-only): λ=(1, 0, 0), no rendering, no warps")
+    elif use_rgb:
         print(f"    RGB loss form: {rgb_l1_w:.2f}·L1 + {rgb_ssim_weight:.2f}·(1-SSIM)"
               f"{' (SSIM disabled)' if rgb_ssim_weight == 0 else ''}")
     else:
@@ -378,6 +418,12 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
         if sequences is None:
             # Streaming: load fresh sequence from disk + move to GPU
             seq_cpu = loader[i % n_dataset]
+            # Seed RNG by sample_token so FPS produces the SAME anchors every
+            # time we revisit this sample across epochs. Without this, the
+            # denoise target jitters per-iter (hacks.md H1) and the model
+            # can't converge on streaming data.
+            tok = seq_cpu[0].get('_sample_token', str(i))
+            torch.manual_seed(hash(tok) & 0x7FFFFFFF)
             seq = [to_device(f, device) for f in seq_cpu]
         else:
             seq = sequences[i % n_overfit]             # cycle through the cached set
@@ -399,7 +445,8 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
         with torch.cuda.amp.autocast(enabled=mixed_precision, dtype=autocast_dtype):
             outputs = seg(sequence_with_feat)
             L, parts = compute_stage1_loss(outputs, sequence_with_feat, lambdas, losses,
-                                            device, warp_dts=warp_dts, use_rgb=use_rgb)
+                                            device, warp_dts=warp_dts, use_rgb=use_rgb,
+                                            denoise_only=denoise_only)
 
         # Backward + step (paper §B: gradient clip max_norm=35)
         optim.zero_grad()
@@ -528,6 +575,16 @@ if __name__ == "__main__":
     p.add_argument("--full-data", action="store_true",
                     help="stream all 3,121 Part-1 sequences instead of cycling the cached 4. "
                          "Adds ~0.5-1s/iter for disk I/O but exposes the model to real diversity.")
+    p.add_argument("--denoise-only", action="store_true",
+                    help="run pure L_denoise (no depth, no rgb, no warp, no render). "
+                         "Fastest path; isolates the position/coord-frame pathway.")
+    p.add_argument("--freeze-backbone", action="store_true",
+                    help="freeze backbone (eval mode + no grad). Reduces optimizer noise; "
+                         "useful for denoise-only diagnostic runs.")
+    p.add_argument("--limit-data", type=int, default=None,
+                    help="cap streaming-loader effective size to first N sequences. "
+                         "Use with --full-data + small N for multi-epoch revisits "
+                         "(tests per-sample FPS-seed hypothesis cheaply).")
     p.add_argument("--history-path", type=str, default=None)
     p.add_argument("--save-path", type=str, default=None,
                     help="if set, write final {backbone, segmentor} weights "
@@ -542,5 +599,8 @@ if __name__ == "__main__":
          warp_dts=() if a.no_warp else (-0.5, +0.5),
          use_rgb=(not a.no_rgb),
          full_data=a.full_data,
+         denoise_only=a.denoise_only,
+         freeze_backbone=a.freeze_backbone,
+         limit_data=a.limit_data,
          history_path=a.history_path,
          save_path=a.save_path)
