@@ -190,9 +190,11 @@ def main(splits_json: str,
          n_iters: int = 1500,
          t_seq: int = 1,
          t_queue: int = 1,
-         lr: float = 2e-4,
+         lr: float = 1e-4,
          lr_backbone_mult: float = 0.25,
          grad_clip_max_norm: float = 10.0,
+         scale_min_override: float = 0.05,
+         nan_abort_window: int = 50,
          sem_loss: str = 'both',
          w_occ: float = 1.0, w_kl: float = 1.0,
          w_ce: float = 10.0, w_lovasz: float = 1.0,
@@ -297,6 +299,17 @@ def main(splits_json: str,
     else:
         print("    backbone: torchvision ResNet50 pretrained init")
         print("    segmentor + semantic head: random init")
+
+    # Numerical stability: raise scale_min from default 0.01 m → scale_min_override
+    # (typically 0.05 m). At s=0.01, 1/s² = 1e4 in Σ⁻¹ and 1/√det blows up under
+    # gradient. At s=0.05 the gradient floor is 400× smaller (1/s² = 400).
+    # Without aux losses (Stage-1's depth/RGB/denoise), nothing prevents
+    # scale-collapse to the boundary, so we tighten the floor.
+    prev_scale_min = float(model.segmentor.child_head.scale_min)
+    model.segmentor.child_head.scale_min = float(scale_min_override)
+    print(f"    scale_min override: {prev_scale_min} → "
+          f"{model.segmentor.child_head.scale_min}  (Gaussian floor in metres)")
+
     n_back = sum(p.numel() for p in backbone.parameters() if p.requires_grad)
     n_model = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"    trainable: backbone={n_back/1e6:.1f} M, "
@@ -422,6 +435,51 @@ def main(splits_json: str,
         skipped = not finite
         if skipped:
             n_skipped += 1
+            # On the FIRST NaN, dump diagnostics so we can pinpoint the source.
+            if n_skipped == 1:
+                G_last = outs[-1].raw.gaussians
+                tok = seq[0].get('_sample_token', '?')
+                with torch.no_grad():
+                    sc_min = float(G_last.scales.min().item())
+                    sc_max = float(G_last.scales.max().item())
+                    op_min = float(G_last.opacities.min().item())
+                    op_max = float(G_last.opacities.max().item())
+                print(f"  [NaN-DIAG] first NaN at iter {i}: token={tok}", flush=True)
+                print(f"  [NaN-DIAG] L={L.item():.4g}  gnorm={gnorm.item():.4g}",
+                      flush=True)
+                print(f"  [NaN-DIAG] Gaussian scales:    "
+                      f"min={sc_min:.4g}  max={sc_max:.4g}", flush=True)
+                print(f"  [NaN-DIAG] Gaussian opacities: "
+                      f"min={op_min:.4g}  max={op_max:.4g}", flush=True)
+                grad_stats = []
+                for n, p in list(backbone.named_parameters()) + \
+                        [(f"model.{nm}", pp) for nm, pp in model.named_parameters()]:
+                    if p.grad is None:
+                        continue
+                    g = p.grad
+                    has_nan = bool(torch.isnan(g).any().item())
+                    has_inf = bool(torch.isinf(g).any().item())
+                    if has_nan or has_inf:
+                        grad_stats.append((n, has_nan, has_inf,
+                                           float(g.abs().nan_to_num(0).max().item())))
+                print(f"  [NaN-DIAG] {len(grad_stats)} params with NaN/Inf grad:",
+                      flush=True)
+                for n, hn, hi, maxabs in grad_stats[:15]:
+                    print(f"    {n:60s}  NaN={hn} Inf={hi} max|g|={maxabs:.4g}",
+                          flush=True)
+            # Auto-abort if we've skipped N consecutive iters — no point continuing.
+            if n_skipped >= nan_abort_window:
+                # Count consecutive skips at the tail
+                consec = 0
+                for h in reversed(history):
+                    if h.get('skipped', False):
+                        consec += 1
+                    else:
+                        break
+                if consec >= nan_abort_window - 1:  # current iter not in history yet
+                    print(f"  [ABORT] {consec+1} consecutive NaN-skipped iters "
+                          f">= {nan_abort_window} — stopping early.", flush=True)
+                    break
             print(f"  [skip] iter {i}: non-finite (L={L.item():.3g}, "
                   f"gnorm={gnorm.item():.3g})", flush=True)
         else:
@@ -598,7 +656,7 @@ if __name__ == "__main__":
     p.add_argument("--iters", type=int, default=1500)
     p.add_argument("--t-seq", type=int, default=1)
     p.add_argument("--t-queue", type=int, default=1)
-    p.add_argument("--lr", type=float, default=2e-4)
+    # NOTE: --lr default is set further below (1e-4 post-NaN-fix).
     p.add_argument("--grad-clip", type=float, default=10.0)
     p.add_argument("--sem-loss", choices=['kl', 'ce_lovasz', 'both'],
                     default='both')
@@ -621,6 +679,12 @@ if __name__ == "__main__":
     p.add_argument("--restricted-min-val-voxels", type=int, default=100)
     p.add_argument("--log-every", type=int, default=25)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--scale-min", type=float, default=0.05,
+                    help="Gaussian scale floor in metres. Default 0.05 raises "
+                         "from GF-2's 0.01 to bound 1/s² gradient (400 vs 1e4).")
+    p.add_argument("--nan-abort-window", type=int, default=50,
+                    help="Stop training after N consecutive NaN-skipped iters.")
+    p.add_argument("--lr", type=float, default=1e-4)
     a = p.parse_args()
     main(splits_json=a.splits_json,
          out_dir=a.out_dir,
@@ -649,4 +713,6 @@ if __name__ == "__main__":
          restricted_min_train_voxels=a.restricted_min_train_voxels,
          restricted_min_val_voxels=a.restricted_min_val_voxels,
          log_every=a.log_every,
-         seed=a.seed)
+         seed=a.seed,
+         scale_min_override=a.scale_min,
+         nan_abort_window=a.nan_abort_window)

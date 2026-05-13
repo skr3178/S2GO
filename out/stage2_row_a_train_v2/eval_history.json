@@ -1,0 +1,20 @@
+[
+  {
+    "iter": 500,
+    "mIoU": 0.015581712627698474,
+    "occupancy_IoU": 0.07527148365923063,
+    "restricted_mIoU": 0.015581712627698474,
+    "n_kept_classes": 11,
+    "eval_sec": 10.743299961090088,
+    "n_sequences": 50
+  },
+  {
+    "iter": 1000,
+    "mIoU": 0.016048804538446208,
+    "occupancy_IoU": 0.07105201538625827,
+    "restricted_mIoU": 0.016048804538446208,
+    "n_kept_classes": 11,
+    "eval_sec": 10.740693807601929,
+    "n_sequences": 50
+  }
+]

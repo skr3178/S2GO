@@ -78,23 +78,29 @@ class TemporalSelfAttention(nn.Module):
             decoder layer wraps this with Add+Norm)
         """
         B, K, d = query.shape
-        # Apply positional encodings to Q (and to K side via concatenation)
+        # Apply positional encodings to Q and K only — V is *content* and must
+        # not have positional embeddings baked in (standard transformer
+        # convention; StreamPETR also keeps V free of position). See hacks.md
+        # H6 / Stage1_fix_proposed.md Fix #1.
         q_in = query + query_pos if query_pos is not None else query
         if temp_memory is not None:
-            past = temp_memory + temp_pos if temp_pos is not None else temp_memory
-            kv_in = torch.cat([q_in, past], dim=1)                    # (B, K+L, d)
+            past_k = temp_memory + temp_pos if temp_pos is not None else temp_memory
+            k_in = torch.cat([q_in,   past_k     ], dim=1)            # (B, K+L, d) — with pos
+            v_in = torch.cat([query,  temp_memory], dim=1)            # (B, K+L, d) — content only
         else:
-            kv_in = q_in
+            k_in = q_in
+            v_in = query                                              # content only
 
         # Project Q, K, V
-        Q = self.q_proj(q_in)
-        Kp = self.k_proj(kv_in)
-        Vp = self.v_proj(kv_in)
+        Q  = self.q_proj(q_in)
+        Kp = self.k_proj(k_in)
+        Vp = self.v_proj(v_in)
 
         # Reshape for multi-head: (B, S, num_heads, head_dim)
-        Q = Q.reshape(B, K, self.num_heads, self.head_dim)
-        Kp = Kp.reshape(B, kv_in.shape[1], self.num_heads, self.head_dim)
-        Vp = Vp.reshape(B, kv_in.shape[1], self.num_heads, self.head_dim)
+        S = k_in.shape[1]                                              # same for k_in / v_in
+        Q  = Q.reshape(B, K, self.num_heads, self.head_dim)
+        Kp = Kp.reshape(B, S, self.num_heads, self.head_dim)
+        Vp = Vp.reshape(B, S, self.num_heads, self.head_dim)
 
         # flash_attn requires fp16/bf16
         orig_dtype = Q.dtype
@@ -164,6 +170,12 @@ class DeformableCrossAttention(nn.Module):
         nn.init.constant_(self.weights_fc.weight, 0.0)
         nn.init.constant_(self.weights_fc.bias, 0.0)
         nn.init.xavier_uniform_(self.output_proj.weight)
+        # Fix #4 (Stage1_fix_proposed): zero-init learnable_fc.weight so initial
+        # 3D keypoint offsets are exactly the uniform-±bias bias term, not
+        # Kaiming-random projections of query features (which dominate the bias
+        # at init when query_norm ~1 → offsets unbounded). With weight=0, the
+        # network learns offsets-from-baseline rather than fighting random init.
+        nn.init.constant_(self.learnable_fc.weight, 0.0)
         nn.init.uniform_(self.learnable_fc.bias, -bias, bias)
 
     def forward(self, query: torch.Tensor,
@@ -195,14 +207,53 @@ class DeformableCrossAttention(nn.Module):
         offsets = self.learnable_fc(query).reshape(B, N_q, self.num_pts, 3)
         key_points = reference_points.unsqueeze(-2) + offsets         # (B, N, num_pts, 3)
 
+        # ── Project 3D keypoints → 2D per camera (hoisted earlier so the
+        #    projection-validity mask is available BEFORE the attention softmax).
+        pts_h = torch.cat([key_points, torch.ones_like(key_points[..., :1])], dim=-1)
+        pts_2d_h = torch.matmul(
+            lidar2img[:, :, None, None],                              # (B, N_cam, 1, 1, 4, 4)
+            pts_h[:, None, ..., None]                                  # (B, 1,    N, num_pts, 4, 1)
+        ).squeeze(-1)                                                  # (B, N_cam, N, num_pts, 4)
+        pts_z = pts_2d_h[..., 2]                                       # depth in camera frame
+        pts_2d = pts_2d_h[..., :2] / pts_2d_h[..., 2:3].clamp(min=1e-5)
+        pts_2d_norm = torch.stack([
+            pts_2d[..., 0] / float(pad_w),
+            pts_2d[..., 1] / float(pad_h),
+        ], dim=-1)                                                     # (B, N_cam, N, num_pts, 2)
+
+        # ── Projection-validity mask: a sample site is valid iff (a) the 3D
+        #    keypoint is in front of the camera AND (b) its 2D projection
+        #    lands inside the image. Without masking, ~80% of softmax
+        #    probability mass leaks to sites the camera physically cannot see
+        #    (verified empirically by probe_attn_waste.py).
+        valid_cqp = (
+            (pts_z > 1e-5) &
+            (pts_2d_norm[..., 0] >= 0.0) & (pts_2d_norm[..., 0] <= 1.0) &
+            (pts_2d_norm[..., 1] >= 0.0) & (pts_2d_norm[..., 1] <= 1.0)
+        )                                                              # (B, N_cam, N_q, num_pts)
+
         # ── Attention weights (per-cam, per-(group, level, point)) ─────────
         l2i_flat = lidar2img[..., :3, :].flatten(-2)                  # (B, N_cam, 12)
         cam_embed = self.cam_embed(l2i_flat)                          # (B, N_cam, d)
         feat_pos = (query + query_pos).unsqueeze(2) + cam_embed.unsqueeze(1)
         # feat_pos: (B, N, N_cam, d)
         weights = self.weights_fc(feat_pos)                           # (B, N, N_cam, groups*levels*pts)
-        # Softmax across all (cam × level × pt) sample sites for each (query, group)
-        weights = weights.reshape(B, N_q, -1, self.num_groups).softmax(dim=-2)
+        # Reshape into (B, N_q, N_cam*levels*pts, num_groups) so that softmax
+        # across the second-to-last dim normalizes within each (query, group).
+        weights = weights.reshape(B, N_q, -1, self.num_groups)
+
+        # Build validity in the same 312-site layout:
+        #   site_index = cam * (num_levels * num_pts) + level * num_pts + pt
+        # (validity is shared across feature levels — the same 3D point is
+        # sampled at all 4 scales)
+        valid_sites = valid_cqp.unsqueeze(2).expand(-1, -1, self.num_levels, -1, -1)
+        valid_sites = valid_sites.permute(0, 3, 1, 2, 4).contiguous()
+        valid_sites = valid_sites.reshape(B, N_q, -1)                  # (B, N_q, Ncam*L*P)
+
+        # Mask invalid sites with -1e4 so their post-softmax mass ≈ 0.
+        # bf16/fp16 safe: exp(-1e4) underflows to 0.
+        weights = weights.masked_fill(~valid_sites.unsqueeze(-1), -1e4)
+        weights = weights.softmax(dim=-2)
         # → (B, N, N_cam*levels*pts, num_groups)
         weights = weights.reshape(B, N_q, self.num_cams, -1, self.num_groups)
         # → (B, N, N_cam, levels*pts, num_groups)
@@ -214,21 +265,7 @@ class DeformableCrossAttention(nn.Module):
         weights = weights.reshape(B * self.num_cams, N_q, self.num_groups,
                                     self.num_levels, self.num_pts)
 
-        # ── Project 3D keypoints → 2D per camera ───────────────────────────
-        pts_h = torch.cat([key_points, torch.ones_like(key_points[..., :1])], dim=-1)
-        # (B, N, num_pts, 4) → unsqueeze for cam dim
-        pts_2d = torch.matmul(
-            lidar2img[:, :, None, None],                              # (B, N_cam, 1, 1, 4, 4)
-            pts_h[:, None, ..., None]                                  # (B, 1,    N, num_pts, 4, 1)
-        ).squeeze(-1)                                                  # (B, N_cam, N, num_pts, 4)
-        # Perspective divide
-        pts_2d = pts_2d[..., :2] / pts_2d[..., 2:3].clamp(min=1e-5)
-        # Normalize to [0, 1] using image dims
-        pts_2d_norm = torch.stack([
-            pts_2d[..., 0] / float(pad_w),
-            pts_2d[..., 1] / float(pad_h),
-        ], dim=-1)
-        # (B, N_cam, N, num_pts, 2)
+        # ── Reshape sampling coords for mmcv (pts_2d_norm computed above) ──
         pts_2d_norm = pts_2d_norm.flatten(end_dim=1)                   # (B*N_cam, N, num_pts, 2)
         # Expand for (groups, levels): each group/level samples the same 2D points
         pts_2d_norm = pts_2d_norm[:, :, None, None, :, :].expand(

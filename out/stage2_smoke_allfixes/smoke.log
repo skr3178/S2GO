@@ -1,0 +1,775 @@
+Stage-2 streaming train: 50 iters  (FROM SCRATCH)
+  out_dir: out/stage2_smoke_allfixes
+  splits_json: out/stage2_part1_splits.json
+[1/6] Building loader + splits…
+    splits: train=2462 val=914 (scenes: train=62, val=23)
+    GT-covered base: 3376
+    after token filter: train_pos=2462 val_pos=914
+[2/6] From-scratch arch (no Stage-1 ckpt)
+    arch: {'K': 900, 'J': 10, 'embed_dims': 768, 'num_layers': 2, 'num_pts': 4, 'feedforward_channels': 2048}
+[3/6] Building backbone + Stage 2 model…
+05/13 23:05:56 - mmengine - INFO - load model from: torchvision://resnet50
+05/13 23:05:56 - mmengine - INFO - Loads checkpoint by torchvision backend from path: torchvision://resnet50
+05/13 23:05:56 - mmengine - WARNING - The model and loaded state dict do not match exactly
+
+unexpected key in source state_dict: fc.weight, fc.bias
+
+05/13 23:05:56 - mmengine - INFO - 
+conv1.weight - torch.Size([64, 3, 7, 7]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+bn1.weight - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+bn1.bias - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.0.conv1.weight - torch.Size([64, 64, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.0.bn1.weight - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.0.bn1.bias - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.0.conv2.weight - torch.Size([64, 64, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.0.bn2.weight - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.0.bn2.bias - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.0.conv3.weight - torch.Size([256, 64, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.0.bn3.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.0.bn3.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.0.downsample.0.weight - torch.Size([256, 64, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.0.downsample.1.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.0.downsample.1.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.1.conv1.weight - torch.Size([64, 256, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.1.bn1.weight - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.1.bn1.bias - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.1.conv2.weight - torch.Size([64, 64, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.1.bn2.weight - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.1.bn2.bias - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.1.conv3.weight - torch.Size([256, 64, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.1.bn3.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.1.bn3.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.2.conv1.weight - torch.Size([64, 256, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.2.bn1.weight - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.2.bn1.bias - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.2.conv2.weight - torch.Size([64, 64, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.2.bn2.weight - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.2.bn2.bias - torch.Size([64]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.2.conv3.weight - torch.Size([256, 64, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.2.bn3.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer1.2.bn3.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.0.conv1.weight - torch.Size([128, 256, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.0.bn1.weight - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.0.bn1.bias - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.0.conv2.weight - torch.Size([128, 128, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.0.bn2.weight - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.0.bn2.bias - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.0.conv3.weight - torch.Size([512, 128, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.0.bn3.weight - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.0.bn3.bias - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.0.downsample.0.weight - torch.Size([512, 256, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.0.downsample.1.weight - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.0.downsample.1.bias - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.1.conv1.weight - torch.Size([128, 512, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.1.bn1.weight - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.1.bn1.bias - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.1.conv2.weight - torch.Size([128, 128, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.1.bn2.weight - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.1.bn2.bias - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.1.conv3.weight - torch.Size([512, 128, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.1.bn3.weight - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.1.bn3.bias - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.2.conv1.weight - torch.Size([128, 512, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.2.bn1.weight - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.2.bn1.bias - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.2.conv2.weight - torch.Size([128, 128, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.2.bn2.weight - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.2.bn2.bias - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.2.conv3.weight - torch.Size([512, 128, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.2.bn3.weight - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.2.bn3.bias - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.3.conv1.weight - torch.Size([128, 512, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.3.bn1.weight - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.3.bn1.bias - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.3.conv2.weight - torch.Size([128, 128, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.3.bn2.weight - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.3.bn2.bias - torch.Size([128]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.3.conv3.weight - torch.Size([512, 128, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.3.bn3.weight - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer2.3.bn3.bias - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.0.conv1.weight - torch.Size([256, 512, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.0.bn1.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.0.bn1.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.0.conv2.weight - torch.Size([256, 256, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.0.bn2.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.0.bn2.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.0.conv3.weight - torch.Size([1024, 256, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.0.bn3.weight - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.0.bn3.bias - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.0.downsample.0.weight - torch.Size([1024, 512, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.0.downsample.1.weight - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.0.downsample.1.bias - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.1.conv1.weight - torch.Size([256, 1024, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.1.bn1.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.1.bn1.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.1.conv2.weight - torch.Size([256, 256, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.1.bn2.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.1.bn2.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.1.conv3.weight - torch.Size([1024, 256, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.1.bn3.weight - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.1.bn3.bias - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.2.conv1.weight - torch.Size([256, 1024, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.2.bn1.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.2.bn1.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.2.conv2.weight - torch.Size([256, 256, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.2.bn2.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.2.bn2.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.2.conv3.weight - torch.Size([1024, 256, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.2.bn3.weight - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.2.bn3.bias - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.3.conv1.weight - torch.Size([256, 1024, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.3.bn1.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.3.bn1.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.3.conv2.weight - torch.Size([256, 256, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.3.bn2.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.3.bn2.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.3.conv3.weight - torch.Size([1024, 256, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.3.bn3.weight - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.3.bn3.bias - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.4.conv1.weight - torch.Size([256, 1024, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.4.bn1.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.4.bn1.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.4.conv2.weight - torch.Size([256, 256, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.4.bn2.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.4.bn2.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.4.conv3.weight - torch.Size([1024, 256, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.4.bn3.weight - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.4.bn3.bias - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.5.conv1.weight - torch.Size([256, 1024, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.5.bn1.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.5.bn1.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.5.conv2.weight - torch.Size([256, 256, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.5.bn2.weight - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.5.bn2.bias - torch.Size([256]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.5.conv3.weight - torch.Size([1024, 256, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.5.bn3.weight - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer3.5.bn3.bias - torch.Size([1024]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.0.conv1.weight - torch.Size([512, 1024, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.0.bn1.weight - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.0.bn1.bias - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.0.conv2.weight - torch.Size([512, 512, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.0.bn2.weight - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.0.bn2.bias - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.0.conv3.weight - torch.Size([2048, 512, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.0.bn3.weight - torch.Size([2048]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.0.bn3.bias - torch.Size([2048]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.0.downsample.0.weight - torch.Size([2048, 1024, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.0.downsample.1.weight - torch.Size([2048]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.0.downsample.1.bias - torch.Size([2048]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.1.conv1.weight - torch.Size([512, 2048, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.1.bn1.weight - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.1.bn1.bias - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.1.conv2.weight - torch.Size([512, 512, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.1.bn2.weight - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.1.bn2.bias - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.1.conv3.weight - torch.Size([2048, 512, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.1.bn3.weight - torch.Size([2048]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.1.bn3.bias - torch.Size([2048]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.2.conv1.weight - torch.Size([512, 2048, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.2.bn1.weight - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.2.bn1.bias - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.2.conv2.weight - torch.Size([512, 512, 3, 3]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.2.bn2.weight - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.2.bn2.bias - torch.Size([512]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.2.conv3.weight - torch.Size([2048, 512, 1, 1]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.2.bn3.weight - torch.Size([2048]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+layer4.2.bn3.bias - torch.Size([2048]): 
+PretrainedInit: load from torchvision://resnet50 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+lateral_convs.0.conv.weight - torch.Size([768, 256, 1, 1]): 
+XavierInit: gain=1, distribution=uniform, bias=0 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+lateral_convs.0.conv.bias - torch.Size([768]): 
+The value is the same before and after calling `init_weights` of FPN  
+ 
+05/13 23:05:56 - mmengine - INFO - 
+lateral_convs.1.conv.weight - torch.Size([768, 512, 1, 1]): 
+XavierInit: gain=1, distribution=uniform, bias=0 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+lateral_convs.1.conv.bias - torch.Size([768]): 
+The value is the same before and after calling `init_weights` of FPN  
+ 
+05/13 23:05:56 - mmengine - INFO - 
+lateral_convs.2.conv.weight - torch.Size([768, 1024, 1, 1]): 
+XavierInit: gain=1, distribution=uniform, bias=0 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+lateral_convs.2.conv.bias - torch.Size([768]): 
+The value is the same before and after calling `init_weights` of FPN  
+ 
+05/13 23:05:56 - mmengine - INFO - 
+lateral_convs.3.conv.weight - torch.Size([768, 2048, 1, 1]): 
+XavierInit: gain=1, distribution=uniform, bias=0 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+lateral_convs.3.conv.bias - torch.Size([768]): 
+The value is the same before and after calling `init_weights` of FPN  
+ 
+05/13 23:05:56 - mmengine - INFO - 
+fpn_convs.0.conv.weight - torch.Size([768, 768, 3, 3]): 
+XavierInit: gain=1, distribution=uniform, bias=0 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+fpn_convs.0.conv.bias - torch.Size([768]): 
+The value is the same before and after calling `init_weights` of FPN  
+ 
+05/13 23:05:56 - mmengine - INFO - 
+fpn_convs.1.conv.weight - torch.Size([768, 768, 3, 3]): 
+XavierInit: gain=1, distribution=uniform, bias=0 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+fpn_convs.1.conv.bias - torch.Size([768]): 
+The value is the same before and after calling `init_weights` of FPN  
+ 
+05/13 23:05:56 - mmengine - INFO - 
+fpn_convs.2.conv.weight - torch.Size([768, 768, 3, 3]): 
+XavierInit: gain=1, distribution=uniform, bias=0 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+fpn_convs.2.conv.bias - torch.Size([768]): 
+The value is the same before and after calling `init_weights` of FPN  
+ 
+05/13 23:05:56 - mmengine - INFO - 
+fpn_convs.3.conv.weight - torch.Size([768, 768, 3, 3]): 
+XavierInit: gain=1, distribution=uniform, bias=0 
+ 
+05/13 23:05:56 - mmengine - INFO - 
+fpn_convs.3.conv.bias - torch.Size([768]): 
+The value is the same before and after calling `init_weights` of FPN  
+ 
+    backbone: torchvision ResNet50 pretrained init
+    segmentor + semantic head: random init
+    scale_min override: 0.01 → 0.05  (Gaussian floor in metres)
+    trainable: backbone=47.5 M, model=22.9 M, total=70.4 M
+[4/6] G2V backend: cuda  (train sparse 4096 voxels/iter, eval dense)
+[5/6] Streaming training for 50 iters (log 5, eval every 100, save_periodic_every 200, NaN-guarded, grad-clip=10.0)
+
+  iter |   total |  occ_bce |  sem_kl |  sem_ce | lovasz |  gnorm | opa_mean | sec | mem MB
+  -----+---------+----------+---------+---------+--------+--------+----------+-----+-------
+     0 |  42.315 |   8.5613 |   2.982 |   2.982 |  0.949 | 157.72 |    0.281 |   1 |   3089
+     5 |  26.859 |   2.6667 |   2.114 |   2.114 |  0.936 |  48.86 |    0.337 |   4 |   4495
+    10 |  26.533 |   2.2840 |   2.121 |   2.121 |  0.922 |  61.88 |    0.207 |   7 |   4786
+    15 |  22.430 |   2.1949 |   1.758 |   1.758 |  0.893 |  50.70 |    0.172 |   9 |   4946
+    20 |  24.839 |   2.1789 |   1.977 |   1.977 |  0.919 |  53.21 |    0.174 |  12 |   4946
+    25 |  23.044 |   2.0128 |   1.830 |   1.830 |  0.905 |  41.89 |    0.148 |  15 |   4946
+    30 |  22.057 |   2.1325 |   1.731 |   1.731 |  0.886 |  38.35 |    0.166 |  18 |   4946
+    35 |  23.697 |   2.3240 |   1.860 |   1.860 |  0.909 |  71.63 |    0.165 |  21 |   4946
+    40 |  21.542 |   2.2978 |   1.673 |   1.673 |  0.846 |  95.43 |    0.125 |  24 |   4946
+    45 |  23.993 |   2.2409 |   1.895 |   1.895 |  0.908 |  46.78 |    0.172 |  27 |   4946
+    49 |  18.288 |   2.1929 |   1.384 |   1.384 |  0.876 |  68.28 |    0.148 |  29 |   4946
+  [best-train #1] iter 49: smoothed L(50) = 24.5207 → out/stage2_smoke_allfixes/ckpt_best_train.pt
+
+Training done. best_smoothed_train=24.5207 (1 saves)   best_val_mIoU=-100.00% (0 saves)
+  history → out/stage2_smoke_allfixes/training_history.json + eval_history.json
+[6/6] Final eval on 0 val sequences (out of 914 held-out)…
+      eval 100/914 (23s)
+      eval 200/914 (46s)
+      eval 300/914 (70s)
+      eval 400/914 (93s)
+      eval 500/914 (117s)
+      eval 600/914 (140s)
+      eval 700/914 (163s)
+      eval 800/914 (186s)
+      eval 900/914 (209s)
+  raw mIoU (17 classes excl. empty): 0.43%
+  restricted mIoU (≥1000 train + ≥100 val voxels, 15 kept classes): 0.49%
+  occupancy IoU: 6.82%
+  per-class IoU:
+                   class |    iou |   val_seen |   train_seen
+    ---------------------+--------+------------+-------------
+                 barrier |  0.00% |     174045 |        10585
+                 bicycle |  0.00% |     303613 |        15965
+                     bus |  0.00% |      24435 |          552
+                     car |  0.00% |     136347 |         4443
+    construction_vehicle |  0.00% |     964457 |        46532
+              motorcycle |  0.00% |     148841 |         9326
+              pedestrian |  0.00% |       5054 |          602
+            traffic_cone |  0.00% |     222386 |         8745
+                 trailer |  0.00% |      85366 |         1246
+                   truck |  0.00% |      22109 |         8891
+       driveable_surface |  0.00% |     416599 |        32376
+              other_flat |  4.72% |    9204790 |       495454
+                sidewalk |  0.00% |     458446 |         7499
+                 terrain |  0.00% |    2591177 |       154237
+                 manmade |  0.75% |    5314636 |       414679
+              vegetation |  0.14% |    9166295 |       417460
+                   other |  1.68% |    7923525 |       672822
+  eval_final → out/stage2_smoke_allfixes/eval_final.json
+  ckpts: best_train=exists best_val=NONE periodic=NONE

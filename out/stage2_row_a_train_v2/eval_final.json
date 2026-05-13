@@ -1,0 +1,187 @@
+{
+  "mIoU": 0.01164227292807252,
+  "restricted_mIoU": 0.01164227292807252,
+  "occupancy_IoU": 0.07167281617472937,
+  "n_voxels_seen": 622122048,
+  "n_val_sequences": 914,
+  "eval_sec": 197.17180752754211,
+  "per_class": {
+    "barrier": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 174045,
+      "pred": 0
+    },
+    "bicycle": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 303613,
+      "pred": 0
+    },
+    "bus": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 24435,
+      "pred": 0
+    },
+    "car": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 136347,
+      "pred": 0
+    },
+    "construction_vehicle": {
+      "iou": 0.01722725713358011,
+      "prec": 0.025984617097813783,
+      "recall": 0.048630472898221484,
+      "seen": 964457,
+      "pred": 1804991
+    },
+    "motorcycle": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 148841,
+      "pred": 0
+    },
+    "pedestrian": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 5054,
+      "pred": 0
+    },
+    "traffic_cone": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 222386,
+      "pred": 0
+    },
+    "trailer": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 85366,
+      "pred": 0
+    },
+    "truck": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 22109,
+      "pred": 0
+    },
+    "driveable_surface": {
+      "iou": 0.004978868483267347,
+      "prec": 0.005200737054776701,
+      "recall": 0.10451057251697676,
+      "seen": 416599,
+      "pred": 8371698
+    },
+    "other_flat": {
+      "iou": 0.062189393392642504,
+      "prec": 0.06325944153259604,
+      "recall": 0.7861663329635983,
+      "seen": 9204790,
+      "pred": 114393928
+    },
+    "sidewalk": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 458446,
+      "pred": 0
+    },
+    "terrain": {
+      "iou": 0.005947134306329945,
+      "prec": 0.007116301557789142,
+      "recall": 0.03493354564354346,
+      "seen": 2591177,
+      "pred": 12719950
+    },
+    "manmade": {
+      "iou": 0.03712665948020508,
+      "prec": 0.03800624658694513,
+      "recall": 0.6160068158948233,
+      "seen": 5314636,
+      "pred": 86139840
+    },
+    "vegetation": {
+      "iou": 0.02695040400085312,
+      "prec": 0.027775081808858435,
+      "recall": 0.4758051099162748,
+      "seen": 9166295,
+      "pred": 157024560
+    },
+    "other": {
+      "iou": 0.04349892298035472,
+      "prec": 0.04416810309373562,
+      "recall": 0.7416736869007166,
+      "seen": 7923525,
+      "pred": 133052352
+    },
+    "empty": {
+      "iou": 0.12974816862574143,
+      "prec": 0.995329503186328,
+      "recall": 0.12982721158089155,
+      "seen": 547797824,
+      "pred": 71452784
+    }
+  },
+  "train_class_seen": {
+    "barrier": 314601,
+    "bus": 19402,
+    "construction_vehicle": 1231408,
+    "motorcycle": 299244,
+    "traffic_cone": 281444,
+    "driveable_surface": 687354,
+    "other_flat": 15799852,
+    "manmade": 11976010,
+    "vegetation": 14199429,
+    "other": 21057522,
+    "empty": 888150748,
+    "bicycle": 398376,
+    "trailer": 38243,
+    "terrain": 4836889,
+    "sidewalk": 242382,
+    "car": 185237,
+    "truck": 250029,
+    "pedestrian": 31830
+  },
+  "restricted": {
+    "min_train_voxels": 1000,
+    "min_val_voxels": 100,
+    "kept_classes": [
+      "barrier",
+      "bicycle",
+      "bus",
+      "car",
+      "construction_vehicle",
+      "motorcycle",
+      "pedestrian",
+      "traffic_cone",
+      "trailer",
+      "truck",
+      "driveable_surface",
+      "other_flat",
+      "sidewalk",
+      "terrain",
+      "manmade",
+      "vegetation",
+      "other"
+    ],
+    "dropped_classes": [],
+    "n_kept": 17,
+    "n_dropped": 0
+  },
+  "best_val_mIoU": 0.016048804538446208,
+  "best_smoothed_train_loss": 14.9235036277771,
+  "occ_threshold": 0.5,
+  "iters_total": 1500,
+  "iters_skipped": 0
+}
