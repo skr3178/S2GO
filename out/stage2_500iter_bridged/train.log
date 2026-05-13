@@ -1,0 +1,33 @@
+Stage-2 smoke run: 500 iters × 4 sequences  (init from Stage 1 ckpt)
+  sem_loss=both  weights occ/kl/ce/lov = 1.0/1.0/10.0/1.0
+  occ_pos_weight=16.0  ignore_empty_in_sem=True
+[1/5] Building loader…
+    base sequences: 3376, with-GT sequences: 914
+    cache the first 4 GT-covered sequences (loader idx = [80, 81, 82, 83])
+[2/5] Reading Stage-1 ckpt arch: out/barebones_full_part1_5000iter_v2/ckpt.pt
+    arch: {'K': 900, 'J': 10, 'embed_dims': 768, 'num_layers': 6, 'num_pts': 13, 'feedforward_channels': 3072}
+[3/5] Building backbone + Stage 2 model…
+
+
+    query_init: learned (paper §3.4.1 — Stage2Lifter, ignores LiDAR)
+    segmentor: missing=3 unexpected=0; child_head.head partial-transferred (first 11 rows): True
+    trainable: backbone=47.5 M, model=60.7 M, total=108.2 M
+[4/5] G2V backend: cuda (DENSE — full 200×200×16 grid)
+[5/5] Training for 500 iters (log every 25, NaN-guarded, grad-clip=10.0)…
+
+  iter |   total |  occ_bce |  sem_kl |  sem_ce | lovasz |  gnorm | opa_mean | sec | mem MB
+  -----+---------+----------+---------+---------+--------+--------+----------+-----+-------
+     0 |  35.996 |   2.9710 |   2.916 |   2.916 |  0.946 |  39.50 |    0.176 |   1 |   4001
+    25 |  17.746 |   1.2755 |   1.418 |   1.418 |  0.867 |   7.80 |    0.226 |  22 |   5476
+    50 |  13.471 |   1.2809 |   1.037 |   1.037 |  0.787 |   6.38 |    0.190 |  43 |   5583
+    75 |  11.581 |   1.3305 |   0.864 |   0.864 |  0.743 |  21.28 |    0.198 |  64 |   5661
+   100 |  10.655 |   1.2456 |   0.789 |   0.789 |  0.726 |  25.31 |    0.198 |  86 |   5667
+   125 |   9.897 |   1.2251 |   0.724 |   0.724 |  0.709 |  16.68 |    0.217 | 107 |   5687
+   150 |   9.272 |   1.1858 |   0.672 |   0.672 |  0.690 |  18.15 |    0.220 | 129 |   5687
+   175 |   9.186 |   1.1995 |   0.664 |   0.664 |  0.682 |  40.81 |    0.200 | 150 |   5687
+   200 |   8.112 |   1.1815 |   0.570 |   0.570 |  0.657 |   9.68 |    0.194 | 171 |   5687
+   225 |   7.632 |   1.1586 |   0.531 |   0.531 |  0.638 |  17.30 |    0.199 | 193 |   5687
+   250 |   7.436 |   1.1283 |   0.516 |   0.516 |  0.630 |  37.37 |    0.200 | 214 |   5687
+   275 |   7.338 |   1.1134 |   0.509 |   0.509 |  0.622 |  29.67 |    0.212 | 236 |   5687
+   300 |   6.731 |   1.0912 |   0.458 |   0.458 |  0.602 |  21.74 |    0.199 | 257 |   5693
+   325 |   6.404 |   1.0691 |   0.432 |   0.432 |  0.587 |  23.20 |    0.205 | 279 |   5704

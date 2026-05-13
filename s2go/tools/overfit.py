@@ -307,7 +307,10 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
          freeze_backbone: bool = False,
          limit_data: int = None,
          history_path: str = None,
-         save_path: str = None):
+         save_path: str = None,
+         save_best: bool = False,
+         save_best_window: int = 50,
+         save_best_cooldown: int = 100):
     assert not (denoise_only and depth_only), \
         "--denoise-only and --depth-only are mutually exclusive"
     # Denoise-only convenience: overrides
@@ -473,6 +476,34 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
     n_skipped = 0
     current_sample_token = "(cached)"     # default; overridden in streaming branch
 
+    # ── Save-best tracking ───────────────────────────────────────────────
+    # Track the lowest moving-average (window=save_best_window) of L_total
+    # over finite (non-skipped) iters. Save weights to `<save_path>_best.pt`
+    # whenever the smoothed loss reaches a new low, rate-limited by
+    # `save_best_cooldown` iters between saves (to avoid 413 MB writes on
+    # every iter when loss is trending down rapidly).
+    best_smoothed_loss = float('inf')
+    last_best_save_iter = -10**9
+    n_best_saves = 0
+
+    def _build_ckpt():
+        """Build the same checkpoint dict used by the end-of-training save."""
+        return {
+            'backbone':  backbone.state_dict(),
+            'segmentor': seg.state_dict(),
+            'config': {
+                'K': 900, 'J': 10, 'embed_dims': 768,
+                'T_queue': t_queue, 'T_seq': t_seq,
+                'num_layers':           num_layers,
+                'num_pts':              num_pts,
+                'feedforward_channels': feedforward_channels,
+                'rgb_ssim_weight':      rgb_ssim_weight,
+                'use_checkpoint':       use_checkpoint,
+                'warp_dts':             list(warp_dts),
+                'iters_trained':        n_iters,
+            },
+        }
+
     def _fmt_split(v_t0, v_minus, v_plus, fmt):
         def _f(v):
             return (fmt.format(v) if v == v else "  --  ")    # NaN-safe via x==x
@@ -569,6 +600,33 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
             **queue_stats,
         })
 
+        # ── Save-best logic ──────────────────────────────────────────────
+        # Compute smoothed loss over the last `save_best_window` finite iters;
+        # save weights when smoothed reaches a new low (with cooldown).
+        if save_best and save_path is not None and not skipped \
+                and len(history) >= save_best_window:
+            recent_finite = [h['total'] for h in history[-save_best_window:]
+                              if not h['skipped'] and h['total'] == h['total']]
+            if len(recent_finite) >= save_best_window // 2:
+                smoothed = sum(recent_finite) / len(recent_finite)
+                cooldown_ok = (i - last_best_save_iter) >= save_best_cooldown
+                if smoothed < best_smoothed_loss and cooldown_ok:
+                    best_smoothed_loss = smoothed
+                    last_best_save_iter = i
+                    n_best_saves += 1
+                    best_path = save_path.replace('.pt', '_best.pt')
+                    if best_path == save_path:               # save_path had no ".pt"
+                        best_path = save_path + '_best.pt'
+                    ckpt_best = _build_ckpt()
+                    # Tag with iter + smoothed loss for later identification
+                    ckpt_best['config']['iters_trained'] = i + 1
+                    ckpt_best['config']['best_smoothed_loss'] = smoothed
+                    ckpt_best['config']['best_window']        = save_best_window
+                    torch.save(ckpt_best, best_path)
+                    print(f"  [best #{n_best_saves}] iter {i}: smoothed L "
+                          f"({save_best_window}-iter MA) = {smoothed:.4f} m → "
+                          f"saved {best_path}", flush=True)
+
         if i % log_every == 0 or i == n_iters - 1:
             elapsed = time.time() - t_start
             mem = torch.cuda.max_memory_allocated() / 1024**2
@@ -617,24 +675,22 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
     # Stored as a single .pt with both module state_dicts + arch metadata so a
     # later loader can verify shape/config compatibility before load_state_dict.
     if save_path:
-        ckpt = {
-            'backbone':  backbone.state_dict(),
-            'segmentor': seg.state_dict(),
-            'config': {
-                'K': 900, 'J': 10, 'embed_dims': 768, 'T_queue': t_queue, 'T_seq': t_seq,
-                'num_layers':           num_layers,
-                'num_pts':              num_pts,
-                'feedforward_channels': feedforward_channels,
-                'rgb_ssim_weight':      rgb_ssim_weight,
-                'use_checkpoint':       use_checkpoint,
-                'warp_dts':             list(warp_dts),
-                'iters_trained':        n_iters,
-            },
-        }
+        ckpt = _build_ckpt()
         torch.save(ckpt, save_path)
         sz_mb = sum(t.numel() * t.element_size() for d in [ckpt['backbone'], ckpt['segmentor']]
                      for t in d.values()) / 1024**2
         print(f"  weights saved to {save_path}  ({sz_mb:.1f} MB)")
+    if save_best and save_path is not None:
+        best_path = save_path.replace('.pt', '_best.pt')
+        if best_path == save_path:
+            best_path = save_path + '_best.pt'
+        if n_best_saves > 0:
+            print(f"  best-checkpoint saves during training: {n_best_saves} "
+                  f"(final best smoothed L = {best_smoothed_loss:.4f} m at iter "
+                  f"{last_best_save_iter}) → {best_path}")
+        else:
+            print(f"  save-best was enabled but no qualifying improvement was "
+                  f"seen (no {best_path} written)")
     return history
 
 
@@ -718,6 +774,20 @@ if __name__ == "__main__":
     p.add_argument("--save-path", type=str, default=None,
                     help="if set, write final {backbone, segmentor} weights "
                          "(+ arch config) to this .pt at end of training.")
+    p.add_argument("--save-best", action="store_true",
+                    help="also save weights to '<save-path>_best.pt' whenever "
+                         "the moving-average L_total over the last "
+                         "--save-best-window iters reaches a new low. Useful "
+                         "when streaming loss oscillates: the final-iter "
+                         "weights may not be the lowest-loss point. Requires "
+                         "--save-path.")
+    p.add_argument("--save-best-window", type=int, default=50,
+                    help="window size (iters) for the moving-average loss used "
+                         "by --save-best. Filters per-scene noise.")
+    p.add_argument("--save-best-cooldown", type=int, default=100,
+                    help="min iters between consecutive best-saves (rate limit "
+                         "so we don't write 413 MB of weights on every improving "
+                         "iter during a fast-descent phase).")
     a = p.parse_args()
 
     # ── Resolve recipe defaults ────────────────────────────────────────────
@@ -759,4 +829,7 @@ if __name__ == "__main__":
          freeze_backbone=a.freeze_backbone,
          limit_data=a.limit_data,
          history_path=a.history_path,
-         save_path=a.save_path)
+         save_path=a.save_path,
+         save_best=a.save_best,
+         save_best_window=a.save_best_window,
+         save_best_cooldown=a.save_best_cooldown)

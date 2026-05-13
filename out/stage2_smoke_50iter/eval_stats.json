@@ -1,0 +1,182 @@
+{
+  "mIoU": 0.057281196459968375,
+  "occupancy_IoU": 0.1746517253844229,
+  "n_voxels_seen": 675729,
+  "per_class": {
+    "barrier": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 106,
+      "pred": 0
+    },
+    "bicycle": {
+      "iou": NaN,
+      "prec": NaN,
+      "recall": NaN,
+      "seen": 0,
+      "pred": 0
+    },
+    "bus": {
+      "iou": NaN,
+      "prec": NaN,
+      "recall": NaN,
+      "seen": 0,
+      "pred": 0
+    },
+    "car": {
+      "iou": NaN,
+      "prec": NaN,
+      "recall": NaN,
+      "seen": 0,
+      "pred": 0
+    },
+    "construction_vehicle": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 1782,
+      "pred": 0
+    },
+    "motorcycle": {
+      "iou": NaN,
+      "prec": NaN,
+      "recall": NaN,
+      "seen": 0,
+      "pred": 0
+    },
+    "pedestrian": {
+      "iou": NaN,
+      "prec": NaN,
+      "recall": NaN,
+      "seen": 0,
+      "pred": 0
+    },
+    "traffic_cone": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 288,
+      "pred": 0
+    },
+    "trailer": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 21,
+      "pred": 0
+    },
+    "truck": {
+      "iou": NaN,
+      "prec": NaN,
+      "recall": NaN,
+      "seen": 0,
+      "pred": 0
+    },
+    "driveable_surface": {
+      "iou": NaN,
+      "prec": NaN,
+      "recall": NaN,
+      "seen": 0,
+      "pred": 0
+    },
+    "other_flat": {
+      "iou": 0.10649020346646572,
+      "prec": 0.11847621043806329,
+      "recall": 0.5128146972102517,
+      "seen": 8818,
+      "pred": 38168
+    },
+    "sidewalk": {
+      "iou": 0.0,
+      "prec": NaN,
+      "recall": 0.0,
+      "seen": 482,
+      "pred": 0
+    },
+    "terrain": {
+      "iou": 0.08814790359854738,
+      "prec": 0.21445783132530122,
+      "recall": 0.13018039980497317,
+      "seen": 2051,
+      "pred": 1245
+    },
+    "manmade": {
+      "iou": 0.09964289828360788,
+      "prec": 0.1501214855952794,
+      "recall": 0.2285940803382664,
+      "seen": 3784,
+      "pred": 5762
+    },
+    "vegetation": {
+      "iou": 0.16613426503618667,
+      "prec": 0.20368387234953952,
+      "recall": 0.47401025348903447,
+      "seen": 14044,
+      "pred": 32683
+    },
+    "other": {
+      "iou": 0.11239669421487604,
+      "prec": 0.13449980981361734,
+      "recall": 0.4061566735584654,
+      "seen": 4353,
+      "pred": 13145
+    },
+    "empty": {
+      "iou": 0.8566449383972168,
+      "prec": 0.9692420905760869,
+      "recall": 0.8805833806355096,
+      "seen": 604271,
+      "pred": 548997
+    }
+  },
+  "occ_threshold": 0.5,
+  "occ_pred_range": [
+    0.0,
+    0.9999468922615051
+  ],
+  "occ_pred_mean": 0.3121846318244934,
+  "pred_class_counts": {
+    "barrier": 0,
+    "bicycle": 0,
+    "bus": 0,
+    "car": 0,
+    "construction_vehicle": 0,
+    "motorcycle": 0,
+    "pedestrian": 0,
+    "traffic_cone": 0,
+    "trailer": 0,
+    "truck": 0,
+    "driveable_surface": 0,
+    "other_flat": 38168,
+    "sidewalk": 0,
+    "terrain": 1245,
+    "manmade": 5762,
+    "vegetation": 32683,
+    "other": 13145,
+    "empty": 548997
+  },
+  "gt_class_counts": {
+    "barrier": 106,
+    "bicycle": 0,
+    "bus": 0,
+    "car": 0,
+    "construction_vehicle": 1782,
+    "motorcycle": 0,
+    "pedestrian": 0,
+    "traffic_cone": 288,
+    "trailer": 21,
+    "truck": 0,
+    "driveable_surface": 0,
+    "other_flat": 8818,
+    "sidewalk": 482,
+    "terrain": 2051,
+    "manmade": 3784,
+    "vegetation": 14044,
+    "other": 4353,
+    "empty": 604271
+  },
+  "seq_idx": 0,
+  "occ_loader_idx": 0,
+  "loader_idx": 80
+}
