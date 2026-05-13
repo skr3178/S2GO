@@ -78,23 +78,29 @@ class TemporalSelfAttention(nn.Module):
             decoder layer wraps this with Add+Norm)
         """
         B, K, d = query.shape
-        # Apply positional encodings to Q (and to K side via concatenation)
+        # Apply positional encodings to Q and K only — V is *content* and must
+        # not have positional embeddings baked in (standard transformer
+        # convention; StreamPETR also keeps V free of position). See hacks.md
+        # H6 / Stage1_fix_proposed.md Fix #1.
         q_in = query + query_pos if query_pos is not None else query
         if temp_memory is not None:
-            past = temp_memory + temp_pos if temp_pos is not None else temp_memory
-            kv_in = torch.cat([q_in, past], dim=1)                    # (B, K+L, d)
+            past_k = temp_memory + temp_pos if temp_pos is not None else temp_memory
+            k_in = torch.cat([q_in,   past_k     ], dim=1)            # (B, K+L, d) — with pos
+            v_in = torch.cat([query,  temp_memory], dim=1)            # (B, K+L, d) — content only
         else:
-            kv_in = q_in
+            k_in = q_in
+            v_in = query                                              # content only
 
         # Project Q, K, V
-        Q = self.q_proj(q_in)
-        Kp = self.k_proj(kv_in)
-        Vp = self.v_proj(kv_in)
+        Q  = self.q_proj(q_in)
+        Kp = self.k_proj(k_in)
+        Vp = self.v_proj(v_in)
 
         # Reshape for multi-head: (B, S, num_heads, head_dim)
-        Q = Q.reshape(B, K, self.num_heads, self.head_dim)
-        Kp = Kp.reshape(B, kv_in.shape[1], self.num_heads, self.head_dim)
-        Vp = Vp.reshape(B, kv_in.shape[1], self.num_heads, self.head_dim)
+        S = k_in.shape[1]                                              # same for k_in / v_in
+        Q  = Q.reshape(B, K, self.num_heads, self.head_dim)
+        Kp = Kp.reshape(B, S, self.num_heads, self.head_dim)
+        Vp = Vp.reshape(B, S, self.num_heads, self.head_dim)
 
         # flash_attn requires fp16/bf16
         orig_dtype = Q.dtype
@@ -164,6 +170,12 @@ class DeformableCrossAttention(nn.Module):
         nn.init.constant_(self.weights_fc.weight, 0.0)
         nn.init.constant_(self.weights_fc.bias, 0.0)
         nn.init.xavier_uniform_(self.output_proj.weight)
+        # Fix #4 (Stage1_fix_proposed): zero-init learnable_fc.weight so initial
+        # 3D keypoint offsets are exactly the uniform-±bias bias term, not
+        # Kaiming-random projections of query features (which dominate the bias
+        # at init when query_norm ~1 → offsets unbounded). With weight=0, the
+        # network learns offsets-from-baseline rather than fighting random init.
+        nn.init.constant_(self.learnable_fc.weight, 0.0)
         nn.init.uniform_(self.learnable_fc.bias, -bias, bias)
 
     def forward(self, query: torch.Tensor,
