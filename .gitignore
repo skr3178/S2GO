@@ -35,7 +35,7 @@ scripts/kernel_diff/
 **/*.pyd
 
 # --- Trained model weights (heavy; reproducible from overfit.py --save-path) ---
-out/checkpoints/
+out/
 **/*.pt
 **/*.pth
 **/*.ckpt
