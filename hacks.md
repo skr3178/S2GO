@@ -275,3 +275,182 @@ Discovered 2026-05-12 during the 5,000-iter `--full-data` streaming run.
 Killed and relaunched with `-u`; iter rows became visible in real time.
 
 ---
+
+## H5 — `DeformableCrossAttention` softmax fires blind: 80 % of attention mass lands on geometrically invisible camera sites
+
+**TL;DR:** Each Stage-1 query projects 13 keypoints into all 6 nuScenes
+cameras, producing 312 sample sites = 6 × 4 levels × 13 pts. By the
+geometry of the 6-camera rig, ~80 % of those sites are behind the
+camera or outside its image (any query is visible to only 1-2 of the 6
+cameras). The unmodified [`DeformableCrossAttention.forward`](s2go/models/encoder/temporal_decoder.py#L169)
+softmaxes attention weights across all 312 sites **without computing or
+applying a validity mask**, so most of the attention budget gets spent
+reading noise from cameras that physically cannot see the query.
+
+This is the **canonical Deformable-DETR / Sparse4D / GaussianFormer
+pattern**, present in S2GO's direct upstream lineage but missing from
+the version of `temporal_decoder.py` we shipped. Adding it ≈ 5×
+sharpens attention on valid signal, no params, no compute.
+
+### The bug
+
+In [s2go/models/encoder/temporal_decoder.py:169-253](s2go/models/encoder/temporal_decoder.py#L169-L253)
+(pre-fix), the forward did:
+
+```python
+1.  offsets       ← learnable_fc(query)
+2.  key_points    ← reference_points + offsets
+3.  raw_logits    ← weights_fc(feat_pos)
+4.  weights       ← softmax(raw_logits)        ⚠ uniform over 312 sites
+5.  pts_2d_h      ← lidar2img @ pts_h          ┐  projection happens
+6.  pts_2d_norm   ← perspective divide         │  AFTER softmax — too
+                                               │  late to inform
+7.  mmcv_deform_attn(weights, pts_2d_norm)     ┘  the weights
+```
+
+No `mask = (z>0) ∧ (xy ∈ [0,1])` is ever computed. The clamp
+`pts_2d[..., 2:3].clamp(min=1e-5)` only avoids `nan` from divide-by-zero;
+it does **not** filter behind-camera or out-of-image points. Those
+samples just return edge-of-image noise from `MultiScaleDeformableAttnFunction`,
+but the attention budget already routes finite probability mass to them.
+
+### Empirical measurement (probe, not retrain)
+
+[`probe_attn_waste.py`](probe_attn_waste.py) loads the 5,000-iter T2
+checkpoint, runs one nuScenes frame, hooks each of the 6 cross-attn
+layers, computes geometric validity and the softmax probability that
+currently lands on invalid sites.
+
+```
+Layer | Invalid sites | Wasted (PRE-fix) | Wasted (POST-fix) | Δ attn on valid
+   0  |       81.80 % |          80.46 % |           0.22 %  |     5.11×
+   1  |       82.01 % |          83.26 % |           0.11 %  |     5.97×
+   2  |       82.34 % |          76.89 % |           0.11 %  |     4.32×
+   3  |       82.97 % |          74.73 % |           0.00 %  |     3.96×
+   4  |       83.42 % |          83.45 % |           0.11 %  |     6.04×
+   5  |       86.49 % |          83.92 % |           0.00 %  |     6.22×
+ mean |       83.17 % |          80.45 % |           0.09 %  |     5.11×
+```
+
+Per-camera attention distribution is nearly uniform across all 6
+cameras (~16 % each, range 9-27 %), confirming the trained model has
+**not** learned to suppress invalid cameras through logit magnitudes.
+After 5,000 iters of T2-spec depth-only barebones training, the
+softmax is structurally indistinguishable from an untrained one with
+respect to camera-validity routing.
+
+**Reading**: PRE-fix wasted (80.45 %) ≈ geometric-invalid fraction
+(83.17 %). The two numbers being almost equal means *the model has
+learned essentially nothing about visibility* — the wasted mass is
+what you would predict from a uniform softmax over all 312 sites.
+
+### The fix
+
+[s2go/models/encoder/temporal_decoder.py:192-253](s2go/models/encoder/temporal_decoder.py#L192-L253),
+applied in-place:
+
+```python
+# Hoist projection up so validity is known before softmax
+pts_h        = cat([key_points, ones])
+pts_2d_h     = lidar2img @ pts_h
+pts_z        = pts_2d_h[..., 2]
+pts_2d_norm  = (pts_2d_h[..., :2] / pts_z.clamp(1e-5)) / (pad_w, pad_h)
+
+# Validity in the (B, N_cam, N_q, num_pts) layout
+valid_cqp = (pts_z > 1e-5) & (pts_2d_norm[..., 0] ∈ [0,1]) & (...[..., 1] ∈ [0,1])
+
+# Broadcast to 312-site layout: site_index = cam*52 + level*13 + pt
+valid_sites = valid_cqp.unsqueeze(2).expand(-1,-1,num_levels,-1,-1)
+              .permute(0,3,1,2,4).reshape(B, N_q, -1)
+
+# Mask before softmax. -1e4 is bf16/fp16-safe; exp(-1e4) → 0.
+weights = weights_fc(feat_pos).reshape(B, N_q, -1, num_groups)
+weights = weights.masked_fill(~valid_sites.unsqueeze(-1), -1e4)
+weights = weights.softmax(dim=-2)
+```
+
+Three new lines (validity), one new line (mask), one moved block
+(projection). Output of `MultiScaleDeformableAttnFunction` unchanged in
+shape; only the weight distribution differs.
+
+### What's still missing — `all_miss` handler
+
+[GaussianFormer's `deformable_module.py:213-214`](reference_code/GaussianFormer/model/encoder/gaussian_encoder/deformable_module.py#L213-L214)
+also handles the corner case where **every** sample site for a query
+is invalid (no camera sees it):
+
+```python
+weights[~mask]     = -torch.inf
+weights[all_miss]  = 0.            # row of softmax is meaningless; zero it
+```
+
+My current fix uses `-1e4` (avoids `nan` from softmax-of-all-`-inf`)
+but for queries with zero valid cameras the output is a uniform
+`1/312` distribution over noise. Rare in practice (queries are FPS-
+sampled from on-scene LiDAR), but worth adding for robustness.
+
+### Reference implementations across the deformable-cross-attn lineage
+
+| Repo | File | Style | Validity mask before softmax? |
+|---|---|---|---|
+| **Deformable-DETR** (Zhu 2020, canonical) | `multi_scale_deform_attn.py` | deformable | ✅ |
+| **Sparse4D** (Lin 2022) | not vendored on this PC | deformable | ✅ (per paper §3.2) |
+| **DETR3D** (Wang 2020) | [reference_code/StreamPETR/projects/mmdet3d_plugin/models/utils/detr3d_transformer.py:540-562](reference_code/StreamPETR/projects/mmdet3d_plugin/models/utils/detr3d_transformer.py#L540-L562) | deformable | **❌ — commented out at [L555](reference_code/StreamPETR/projects/mmdet3d_plugin/models/utils/detr3d_transformer.py#L555)**: `# attention_weights = weights * mask` |
+| **StreamPETR** (Wang 2023, paper's stated ref) | [reference_code/StreamPETR/projects/mmdet3d_plugin/models/utils/petr_transformer.py](reference_code/StreamPETR/projects/mmdet3d_plugin/models/utils/petr_transformer.py) | **PETR-style** (3D position embeddings, no per-query projection) | n/a — sidesteps the issue entirely |
+| **GaussianFormer** (Huang 2024) | [reference_code/GaussianFormer/model/encoder/gaussian_encoder/deformable_module.py:202-214](reference_code/GaussianFormer/model/encoder/gaussian_encoder/deformable_module.py#L202-L214) | deformable | ✅ `weights[~mask] = -torch.inf` + `all_miss` zero |
+| **S2GO** (pre-fix, what we cloned) | [s2go/models/encoder/temporal_decoder.py:169-253](s2go/models/encoder/temporal_decoder.py#L169-L253) | deformable | ❌ regression |
+| **S2GO** (post-fix) | same | deformable | ✅ `masked_fill(~valid, -1e4)` |
+
+### Why S2GO probably inherited the regression
+
+[arch_paper.md:18-19](arch_paper.md#L18-L19) cites Deformable Attention
+via "Zhu et al., 2020; Lin et al., 2022; Wang et al., 2023" (Deformable-
+DETR / Sparse4D / StreamPETR's DETR3D variant). The S2GO `_get_weights`
++ `weights_fc` + `cam_embed` structure is a near-verbatim copy of
+StreamPETR's [detr3d_transformer.py:531-538](reference_code/StreamPETR/projects/mmdet3d_plugin/models/utils/detr3d_transformer.py#L531-L538)
+— same variable names, same softmax-without-mask, same `cam_embed` MLP
+shape. The S2GO author appears to have copied from the StreamPETR
+repo's DETR3D file rather than from Deformable-DETR or GaussianFormer,
+and inherited the same omission (with the same commented-out hint at
+L555 that the original author noticed but didn't ship).
+
+The paper-cited Deformable-DETR / Sparse4D / GaussianFormer all do
+validity masking. The fix restores S2GO to the canonical form the
+paper actually references.
+
+### What this changes for training
+
+Probe says **the pre-fix model wastes ~80 % of cross-attn budget on
+noise**. Predicted impact of the fix on loss curves:
+- **Sharper gradient signal** at every iter — cross-attn output stops
+  averaging noise with real features.
+- **Free capacity reclaimed** — `weights_fc` no longer has to learn
+  large negative logits for invisible sites (a task it apparently
+  wasn't doing anyway, per per-cam ~16 % uniformity).
+- **Likely faster convergence + lower L_depth floor**, though magnitude
+  unknown until a paired A/B retrain.
+
+Validation experiment: re-run the same 5,000-iter T2 barebones recipe
+post-fix and compare to [out/s2go_small_t2_half_5000iter_nockpt/](out/s2go_small_t2_half_5000iter_nockpt/)'s
+curve. Init variance noted as caveat — for a clean A/B both runs
+should set the same `torch.manual_seed` before model build.
+
+### Discovery trail
+
+1. Reviewing [Stage1_fix_proposed.md](Stage1_fix_proposed.md) flagged
+   this as one of three "must-fix before Stage 2" items.
+2. Physics argument (camera FOV math): 6 × 70° = 420° angular coverage,
+   so any 3D point lies in 1-2 cameras' FOVs → 4-5 of 6 cameras
+   structurally invalid → ~67-83 % invalid sites.
+3. Empirical confirmation via [`probe_attn_waste.py`](probe_attn_waste.py):
+   actual measured invalid-site fraction = 83.17 % (matches upper end
+   of geometric prediction).
+4. Cross-checked against [reference_code/GaussianFormer/](reference_code/GaussianFormer/)
+   and [reference_code/StreamPETR/](reference_code/StreamPETR/) to
+   confirm the canonical pattern is the masked version.
+5. Applied fix and re-ran probe: wasted mass dropped from 80.45 % to
+   0.09 % (numerical residual of `exp(-1e4)`).
+
+Date discovered + fixed: 2026-05-13.
+
+---

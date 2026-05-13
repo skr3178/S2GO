@@ -50,3 +50,59 @@ before predicting Gaussian offsets is critical. However, 3D occupancy estimation
 signment between parts of the scene and individual queries – with multiple nearby scene elements,
 the lack of clear-cut supervision causes query refinements to be noisy. Second, this ambiguity is
 exacerbated by the inherent locality of the Gaussian-to-voxel splatting operation in Section 3.1. As
+
+---
+
+## Code mapping for `S2GO-Small` (paper variant) on the current repo
+
+The text above describes the architecture in paper terms. This appendix maps those terms to the concrete defaults and CLI flags in `s2go/tools/overfit.py`, so a paper-faithful `S2GO-Small` Stage-1 run can be reproduced verbatim.
+
+### Hardcoded defaults (no flag needed)
+
+| Paper symbol | Value | Defined at |
+|---|---|---|
+| K (parent queries) | **900** | [s2go/tools/overfit.py:363](s2go/tools/overfit.py#L363), [s2go/models/lifter/s2go_lifter.py:38](s2go/models/lifter/s2go_lifter.py#L38) |
+| J (child Gaussians per query) | **10** | [s2go/tools/overfit.py:363](s2go/tools/overfit.py#L363), [s2go/models/encoder/heads.py:7](s2go/models/encoder/heads.py#L7) |
+| N (total Gaussians) | **9 000** | K × J — asserted at [s2go/models/backbone/r50_fpn.py:203](s2go/models/backbone/r50_fpn.py#L203) |
+| `embed_dims` (temporal transformer) | **768** | [s2go/tools/overfit.py:363](s2go/tools/overfit.py#L363) |
+| Backbone | **R50 + FPN**, ImageNet1k init (torchvision auto-download) | [s2go/models/backbone/r50_fpn.py](s2go/models/backbone/r50_fpn.py) |
+
+### Architecture tier — paper-spec requires `--num-layers 6 --num-pts 13 --feedforward-channels 3072`
+
+`overfit.py --help` exposes three architectural knobs and labels their defaults as "T0/T1" (development tier). Paper-spec is "T2":
+
+| Knob | T0/T1 (code default) | T2 (paper-spec) | Flag |
+|---|---|---|---|
+| Transformer decoder layers | 2 | **6** | `--num-layers 6` |
+| Deformable-attention sampling points | 4 | **13** | `--num-pts 13` |
+| Feed-forward hidden dim | 2048 | **3072** | `--feedforward-channels 3072` |
+
+Param counts (with R50 backbone): T0/T1 ≈ **70.2 M total** (47.5 backbone + 22.7 segmentor); T2 ≈ **108 M total** (47.5 backbone + 60.5 segmentor).
+
+### Paper hyperparameters that map directly to flags
+
+| Paper | Flag |
+|---|---|
+| lr 4e-4, AdamW wd 0.01, backbone × 0.25 | hardcoded (default) |
+| cosine annealing | `--lr-schedule cosine --lr-min 0` |
+| grad clip max norm 35 | `--grad-clip 35` |
+| mixed precision | `--mixed-precision --amp-dtype bf16` |
+| batch size 16 | **not reachable on single-GPU** — multi-GPU/DDP code path not in `overfit.py` |
+| ε = 1m LiDAR noise (Stage-1 denoise) | internal to `L_denoise` — only relevant when denoise is enabled (not in `--barebones`) |
+| δ propagation 0–3m → 1.6m inference | only relevant when `T_queue > 1` — not in `--barebones` |
+
+### Paper-faithful S2GO-Small Stage-1 pretraining command (single GPU, 12 GB)
+
+```bash
+python -m s2go.tools.overfit \
+  --full-recipe                                          \  # restores T_seq=4, T_queue=4, full Eq. 8
+  --full-data                                            \  # stream all available sequences
+  --num-layers 6 --num-pts 13 --feedforward-channels 3072 \  # T2 (paper-spec) transformer
+  --lr-schedule cosine --lr-min 0                        \  # paper §B
+  --grad-clip 35                                         \  # paper §B
+  --mixed-precision --amp-dtype bf16                     \  # paper §B
+  --use-checkpoint                                       \  # required for T2 on 12 GB VRAM
+  --save-best --save-path out/s2go_small_t2/best.pt
+```
+
+For a **depth-only ablation** (Table 3 row 1, L_depth only), swap `--full-recipe` for `--barebones`. That additionally disables the temporal queue and warps, so the δ-propagation and ε-noise items above become moot.
