@@ -2,6 +2,21 @@
 
 End-to-end checklist for bringing up this repo on a fresh Linux + NVIDIA GPU machine and running Stage-1 (`L_depth` + `L_rgb` + `L_FPS·K`). Stage 2 is **not** covered here — it needs an additional ~80 GB of SurroundOcc occupancy GT that Stage 1 doesn't touch.
 
+## Canonical environment spec
+
+The same env [CLAUDE.md](CLAUDE.md) pins, recreated bit-for-bit on the second PC:
+
+- **Location (path-based, no name):** `/media/skr/storage/conda_envs/selfocc` — **literal, same on every machine**
+- **Version stack:** Python 3.8.16 / PyTorch 2.0.0+cu118 / mmcv 2.0.1 / mmdet 3.0.0 / mmseg 1.0.0 / mmdet3d 1.1.1 / spconv-cu117 + 4 custom CUDA ops (compiled against env-local nvcc 11.8)
+- **Activation (target path is canonical; the `source` line points at *your* miniconda install):**
+  ```bash
+  source "$(conda info --base)/etc/profile.d/conda.sh"   # or: source <YOUR_MINICONDA>/etc/profile.d/conda.sh
+  conda activate /media/skr/storage/conda_envs/selfocc
+  ```
+- **Built by:** [scripts/setup_gaussianformer_env.sh](scripts/setup_gaussianformer_env.sh)
+
+The env *target* (`/media/skr/storage/conda_envs/selfocc`) stays literal on every machine so [CLAUDE.md](CLAUDE.md) and every in-repo activation snippet copy-paste verbatim. The miniconda *install location* is per-PC (it lives wherever the user ran the miniconda installer, e.g. `/home/<your-user>/miniconda3` or `/opt/miniconda3`) — §3 shows how to handle both.
+
 ## 0. Host prerequisites
 
 | Requirement | Why |
@@ -36,53 +51,80 @@ cd ..
 
 We don't pin a specific upstream commit; any recent main should work — the four `model/{encoder,head}/.../ops/` and `model/head/localagg*/` directories are what the env build script uses ([scripts/setup_gaussianformer_env.sh:84-87](scripts/setup_gaussianformer_env.sh#L84-L87)).
 
-## 3. Create the conda env
+## 3. Recreate the conda env at the canonical path
 
-The env is path-based (no name); it lives wherever you want. Two paths to update before running the script:
+The env lives at the literal path `/media/skr/storage/conda_envs/selfocc` — same on every machine, so [CLAUDE.md](CLAUDE.md) and every activation snippet stay valid without edits.
+
+### 3a. Make the path resolvable on the new PC
+
+The host doesn't need a drive *named* `storage` mounted under `/media/skr/`. The simplest portable approach is a symlink:
 
 ```bash
-# scripts/setup_gaussianformer_env.sh
-# Line 21: REPO_DIR     → /absolute/path/to/S2GO/reference_code/GaussianFormer
-# Line 22: ENV_PREFIX   → /where/you/want/the/env  (e.g. ~/conda_envs/selfocc)
-# Line 23: CONDA_BASE   → /path/to/your/miniconda3
+# As root, one-time per machine:
+sudo mkdir -p /media/skr
+sudo ln -s /your/actual/data/disk /media/skr/storage
+sudo chown -h $USER:$USER /media/skr/storage    # so the path is writable as your user
 ```
 
-Then:
+After that, `/media/skr/storage/...` resolves to whatever real disk you have space on. If the second PC's user is not `skr`, the symlink target name doesn't matter — only the path `/media/skr/storage/...` must resolve.
+
+(If you prefer an actual mount, label the disk `storage` and add the appropriate `/etc/fstab` entry under `/media/skr/storage`. Same end result.)
+
+### 3b. Edit only the two non-path-canonical lines of the script
+
+In [scripts/setup_gaussianformer_env.sh](scripts/setup_gaussianformer_env.sh):
+
+```bash
+# Line 21: REPO_DIR     → /media/skr/storage/self_driving/S2GO/reference_code/GaussianFormer
+#                        (only changes if you cloned the S2GO repo somewhere else;
+#                         simplest: clone at /media/skr/storage/self_driving/S2GO/ too)
+# Line 22: ENV_PREFIX   → /media/skr/storage/conda_envs/selfocc   (LEAVE AS-IS — this is canonical)
+# Line 23: CONDA_BASE   → wherever your miniconda is installed on this PC
+#                        (find it with: conda info --base)
+```
+
+Easiest reproduction: clone the repo to `/media/skr/storage/self_driving/S2GO` on the new PC too — then *zero* edits to the script are required.
+
+### 3c. Run it
 
 ```bash
 bash scripts/setup_gaussianformer_env.sh
 ```
 
-What this script does ([scripts/setup_gaussianformer_env.sh](scripts/setup_gaussianformer_env.sh)):
+What the script does ([scripts/setup_gaussianformer_env.sh](scripts/setup_gaussianformer_env.sh)):
 
-1. Creates a fresh Python 3.8.16 env at `ENV_PREFIX`
-2. Installs the **CUDA 11.8 toolkit *inside the env*** via `nvidia/label/cuda-11.8.0` — this gives a local `nvcc 11.8` no matter what's in `/usr/local/cuda`
+1. Creates a fresh Python 3.8.16 env at `/media/skr/storage/conda_envs/selfocc`
+2. Installs the **CUDA 11.8 toolkit *inside the env*** via `nvidia/label/cuda-11.8.0` — gives a local `nvcc 11.8` regardless of what's in `/usr/local/cuda`
 3. Installs PyTorch 2.0.0 + cu118 wheels
 4. Installs MMLab stack via `openmim`: mmcv 2.0.1 / mmdet 3.0.0 / mmseg 1.0.0 / mmdet3d 1.1.1 (plus a `scikit-image==0.21.0` pin and a Cython pre-install for an mmdet3d sub-dep)
 5. Installs `spconv-cu117` + `timm`
 6. Compiles the four CUDA extensions (`model/encoder/gaussian_encoder/ops`, `localagg`, `localagg_prob`, `localagg_prob_fast`) in-place via `pip install -e .`
-7. Runs a smoke import to confirm `torch.cuda.is_available()` and the MMLab packages all import
+7. Runs a smoke import: prints torch / mmcv / mmdet / mmdet3d / mmseg / spconv / timm versions and confirms `torch.cuda.is_available()`
 
-Re-runnable: yes — it skips env creation if `ENV_PREFIX` already exists.
+Re-runnable: yes — skips env creation if the prefix already exists.
 
-If step 6 fails to compile, the most common cause is `CUDA_HOME` not pointing at the env's nvcc. The script exports it; if you ever rebuild outside the script, do:
+If step 6 fails to compile, the most common cause is `CUDA_HOME` not pointing at the env's nvcc. The script exports it during its own run; if you ever rebuild manually, use:
 
 ```bash
-export CUDA_HOME=$ENV_PREFIX
+export CUDA_HOME=/media/skr/storage/conda_envs/selfocc
 export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 ```
 
 These exports are **only** required at compile time. For runtime use of the pre-compiled extensions, you don't need them.
 
-## 4. Update the project pointer to the env
+## 4. Activation
 
-[CLAUDE.md](CLAUDE.md) and the activation snippet hardcode the old path `/media/skr/storage/conda_envs/selfocc`. After setup, point them at your new prefix. The activation pattern is:
+The `conda activate` target is canonical (same on every machine). The `source` line that initializes conda itself is per-PC — it points at *your* miniconda install, which may not live at the same location as on the first PC.
 
 ```bash
-source $CONDA_BASE/etc/profile.d/conda.sh
-conda activate $ENV_PREFIX
+source "$(conda info --base)/etc/profile.d/conda.sh"      # autodetects your miniconda
+conda activate /media/skr/storage/conda_envs/selfocc      # literal, identical everywhere
 ```
+
+The `conda info --base` trick works because `conda` is on PATH after a normal miniconda install (`.bashrc` modification by the installer). If you prefer to hardcode it, use whichever path applies on the new PC — common ones are `/home/<user>/miniconda3`, `/opt/miniconda3`, or `/opt/anaconda3`. The path that's on *this* (first) PC is `/home/skr/miniconda3`, but do not assume that holds on the second PC.
+
+[CLAUDE.md](CLAUDE.md) currently has the first-PC `source` line hardcoded. Either replace it with the `conda info --base` form above on the second PC, or just remember that line is the one host-specific bit and edit as needed.
 
 ## 5. nuScenes data
 
@@ -136,8 +178,8 @@ All three derive their targets from raw nuScenes sensor data. No external depth 
 Before training, verify the metric port works and the loaders pull cleanly:
 
 ```bash
-source $CONDA_BASE/etc/profile.d/conda.sh
-conda activate $ENV_PREFIX
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate /media/skr/storage/conda_envs/selfocc
 
 # Metric correctness — should print "9/9 cases passed"
 python tests/test_miou.py --no-viz
@@ -178,4 +220,4 @@ Skip these on the second machine until Stage 2 work begins.
 
 ---
 
-**One-line summary:** clone repo → run the env script (after fixing 3 paths) → drop nuScenes keyframes + the two info pkls into `data/nuscenes/` → `python tests/test_miou.py --no-viz` to verify, then training is unblocked. No data beyond raw nuScenes is needed for any Stage-1 loss.
+**One-line summary:** symlink `/media/skr/storage` → real disk → clone repo to `/media/skr/storage/self_driving/S2GO` → run the env script (zero or one edit to `CONDA_BASE`) → drop nuScenes keyframes + the two info pkls into `data/nuscenes/` → `python tests/test_miou.py --no-viz` to verify, then training is unblocked. No data beyond raw nuScenes is needed for any Stage-1 loss.
