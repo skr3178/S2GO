@@ -313,7 +313,9 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
          save_best: bool = False,
          save_best_window: int = 50,
          save_best_cooldown: int = 100,
-         grad_accum_steps: int = 1):
+         grad_accum_steps: int = 1,
+         eval_every: int = 0,
+         eval_seqs=(0, 100, 5000, 20000)):
     assert not (denoise_only and depth_only), \
         "--denoise-only and --depth-only are mutually exclusive"
     # Denoise-only convenience: overrides
@@ -527,6 +529,15 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
     last_best_save_iter = -10**9
     n_best_saves = 0
 
+    # ── Eval-best tracking (option B: held-out BEV nn_dist driven save) ──
+    # When --eval-every N > 0, every N micro-iters we run forward on the
+    # held-out --eval-seqs, compute pooled BEV nn_dist_mean (refined query
+    # vs nearest LiDAR point), and save weights to `<save_path>_eval_best.pt`
+    # whenever the metric reaches a new low. Independent of train-loss best.
+    best_eval_nn_dist = float('inf')
+    n_eval_saves = 0
+    last_eval_dist = float('nan')
+
     def _build_ckpt():
         """Build the same checkpoint dict used by the end-of-training save."""
         return {
@@ -700,6 +711,60 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
                     print(f"  [best #{n_best_saves}] iter {i}: smoothed L "
                           f"({save_best_window}-iter MA) = {smoothed:.4f} m → "
                           f"saved {best_path}", flush=True)
+
+        # ── Periodic held-out eval (option B) ────────────────────────────
+        # Triggered at window-end every `eval_every` micro-iters. Runs forward
+        # on each `eval_seqs` index, computes BEV nn_dist (refined query →
+        # nearest LiDAR point), pools across seqs, and conditionally saves
+        # `<save_path>_eval_best.pt` when the metric reaches a new low.
+        # Independent of the train-loss save-best above.
+        if eval_every > 0 and is_accum_end and (i + 1) % eval_every == 0:
+            bb_was_training = backbone.training
+            seg_was_training = seg.training
+            backbone.eval(); seg.eval()
+            all_nn = []
+            with torch.no_grad():
+                for ev_idx in eval_seqs:
+                    ev_seq_cpu = loader[ev_idx]
+                    ev_seq = [to_device(f, device) for f in ev_seq_cpu]
+                    ev_seq_feat = []
+                    for f_ev in ev_seq:
+                        feat_, ss_, lsi_, _ = backbone(f_ev['imgs'])
+                        ev_seq_feat.append({
+                            **f_ev,
+                            'feat_flatten':       feat_,
+                            'spatial_shapes':     ss_,
+                            'level_start_index':  lsi_,
+                            'pad_h': 256, 'pad_w': 704,
+                        })
+                    with torch.cuda.amp.autocast(enabled=mixed_precision,
+                                                  dtype=autocast_dtype):
+                        ev_outputs = seg(ev_seq_feat)
+                    refined = ev_outputs[-1].refined_xyz[0].float()
+                    lidar = ev_seq_feat[-1]['lidar_pts'][0].float()
+                    d = torch.cdist(refined, lidar).min(dim=1).values
+                    all_nn.append(d)
+            pooled = torch.cat(all_nn).mean().item()
+            last_eval_dist = pooled
+            if bb_was_training and not freeze_backbone:
+                backbone.train()
+            if seg_was_training:
+                seg.train()
+            print(f"  [eval @ iter {i+1}] BEV nn_dist_mean pooled over "
+                  f"{len(eval_seqs)} seqs = {pooled:.4f} m", flush=True)
+            if save_best and save_path is not None and pooled < best_eval_nn_dist - 1e-6:
+                best_eval_nn_dist = pooled
+                n_eval_saves += 1
+                eval_path = save_path.replace('.pt', '_eval_best.pt')
+                if eval_path == save_path:                # save_path had no ".pt"
+                    eval_path = save_path + '_eval_best.pt'
+                ckpt_eval = _build_ckpt()
+                ckpt_eval['config']['iters_trained']       = i + 1
+                ckpt_eval['config']['best_eval_nn_dist']   = pooled
+                ckpt_eval['config']['eval_seqs']           = list(eval_seqs)
+                torch.save(ckpt_eval, eval_path)
+                print(f"  [eval-best #{n_eval_saves}] iter {i+1}: BEV nn_dist "
+                      f"{pooled:.4f} m → saved {eval_path}", flush=True)
 
         # Print log line at every Kth optimizer step (window-end). With N=1
         # this is every K micro-iters, matching the old behavior. With N>1
@@ -879,6 +944,18 @@ if __name__ == "__main__":
                          "and gradients accumulated over N micro-iters). "
                          "Default 1 (no accumulation). Use 16 to approximate "
                          "paper-spec effective batch on a single-sample loader.")
+    p.add_argument("--eval-every", type=int, default=0,
+                    help="run held-out eval every N micro-iters (must align with "
+                         "an accum window-end). 0 = disabled (default). When "
+                         "combined with --save-best, also writes "
+                         "`<save-path>_eval_best.pt` whenever pooled BEV "
+                         "nn_dist_mean reaches a new low. Cheap (~1-2 s per "
+                         "eval seq).")
+    p.add_argument("--eval-seqs", type=int, nargs="+",
+                    default=[0, 100, 5000, 20000],
+                    help="loader sequence indices used for periodic eval. "
+                         "Default [0, 100, 5000, 20000] matches the overnight "
+                         "eval set for direct comparison.")
     a = p.parse_args()
 
     # ── Resolve recipe defaults ────────────────────────────────────────────
@@ -925,4 +1002,6 @@ if __name__ == "__main__":
          save_best=a.save_best,
          save_best_window=a.save_best_window,
          save_best_cooldown=a.save_best_cooldown,
-         grad_accum_steps=a.grad_accum_steps)
+         grad_accum_steps=a.grad_accum_steps,
+         eval_every=a.eval_every,
+         eval_seqs=tuple(a.eval_seqs))
