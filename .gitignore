@@ -18,8 +18,12 @@ data/
 nuscenes/
 BaiduPCS-Go-v4.0.1-linux-amd64/
 
-# Kernel exploration / large diff blobs
-kernel/
+# Kernel exploration / large diff blobs (vendored 3rd-party + scratch)
+# Exception: kernel/localagg_s2go/ is the S2GO-authored CUDA kernel that
+# Stage-2 imports at runtime — track it explicitly. See bottom of file for
+# the build-artifact exclusions inside it.
+kernel/*
+!kernel/localagg_s2go/
 scripts/kernel_diff/
 
 # Claude Code session state
@@ -33,6 +37,12 @@ scripts/kernel_diff/
 **/*.o
 **/*.pyc
 **/*.pyd
+
+# Exception: the S2GO CUDA kernel's compiled extension. Track this binary
+# so cloning is sufficient on identical-GPU-arch machines (both PCs are
+# RTX 3060, SM 8.6). On a machine with a different SM, run
+# `pip install -e kernel/localagg_s2go/` to rebuild after cloning.
+!kernel/localagg_s2go/local_aggregate_s2go/_C.cpython-*.so
 
 # --- Trained model weights (heavy; reproducible from overfit.py --save-path) ---
 out/
