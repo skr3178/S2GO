@@ -68,8 +68,9 @@ Required to reach paper-grade methodology — not done in this run:
 2. **Train for ~24 epochs** over the full train set with appropriate
    batch size + LR schedule (paper §3.4.4 — AdamW 4e-4, cosine, batch 16,
    weight decay 0.01, grad clip 35, backbone LR ×0.25, mixed precision).
-   This run uses lr=2e-4, grad clip=10, batch=1, sparse-voxel sampling —
-   tuned for the 12 GB 3060, not paper config.
+   The recipe-v3 defaults below align with paper hyperparameters where
+   possible; the remaining gap is batch size (1 vs 16) and sparse-voxel
+   sampling (4096 train voxels/iter) — both forced by the 12 GB 3060.
 3. **Eval on the full 6019-sample SurroundOcc val** (we eval on 914 ≈
    15% of val). Subsample val mIoU is a noisy estimator of full-val
    mIoU; expect a few-percent gap purely from sampling variance.
@@ -90,6 +91,71 @@ In `--out-dir`:
 No end-of-training ckpt is saved — only the bests. The user explicitly
 requested this to avoid the prior "save final but it might be worse than
 mid-training" pattern.
+
+## Recipe revisions
+
+The defaults in `s2go/tools/stage2_train.py` have evolved as we diagnosed
+failures and ported paper / fix-branch findings back in. Each row of the
+table is the value actually used at that recipe revision.
+
+| param | v1 (NaN cascade) | v2 (1500-iter ball-park) | v3 (paper-aligned, current) | v4 (grad-accum, optional) | paper §3.4.4 |
+|---|---|---|---|---|---|
+| `--lr` | 2e-4 | 1e-4 | **2e-4** | 2e-4 | 4e-4 (at batch 16) |
+| `--grad-clip` | 10.0 | 10.0 | **35.0** | 35.0 | 35 |
+| schedule | ConstantLR | ConstantLR | **CosineAnnealingLR(T=n_optim_steps)** | + `warmup_cosine` option | cosine |
+| `--scale-min` (Gaussian floor, m) | 0.01 | 0.05 | **0.01** | 0.01 | 0.01 (GF-2 default) |
+| weight decay | 0.01 | 0.01 | 0.01 | 0.01 | 0.01 |
+| backbone LR mult | 0.25 | 0.25 | 0.25 | 0.25 | 0.25 |
+| `--grad-accum-steps` | n/a | n/a | n/a | **opt-in, e.g. 16** | n/a (paper uses batch 16 directly) |
+| effective batch | 1 | 1 | 1 (3060 limit) | grad-accum × 1 | 16 |
+| arch fixes (cross-attn) | absent | absent | **present** (3 fixes from `fix/cross-attn-projection-validity-mask`) | present | n/a |
+| NaN-skip rate (1500 iters) | 87.8% | **0%** | 0% (smoke) | tbd | n/a |
+| val mIoU after 1500 iters | 0.53% | 1.16% | tbd | tbd | n/a (paper ran 24 epochs) |
+
+**Rationale for the v2 → v3 changes** (all reverting v1-era defensive
+workarounds that the cross-attn fixes made unnecessary):
+
+- **LR 1e-4 → 2e-4.** v2's 1e-4 was a NaN-cascade workaround. With cross-attn
+  fixes in, the sqrt-scaling-rule equivalent of paper's 4e-4 at batch 16 is
+  ~1e-4; the linear-rule equivalent is 2.5e-4. 2e-4 splits the difference.
+- **Grad clip 10 → 35.** v2's gnorm range was 19 → 217, so a cap of 10
+  was clipping *every* iter — a hard distortion of gradient direction-vs-magnitude
+  rather than a safety net. Paper's 35 lets natural magnitudes flow.
+- **ConstantLR → CosineAnnealingLR.** Cosine is the paper schedule;
+  ConstantLR was never deliberate, just an early placeholder.
+- **scale_min 0.05 → 0.01.** v2's 0.05 was the v1-era NaN-cascade
+  workaround (raises 1/s² gradient floor from 1e4 to 400). With the
+  cross-attn projection-mask fix preventing the upstream cause (Gaussian
+  scale collapse driven by noisy cross-attn → BCE-empty minimum), 0.01
+  is expected to be safe; revalidate with a smoke before claiming so.
+
+**NaN-guard machinery kept across all revisions:** per-iter NaN diagnostic
+dump (first occurrence) + auto-abort after N consecutive NaN-skipped iters
+(`--nan-abort-window`, default 50). Zero cost when training is healthy.
+
+**v4 additions (ported from Stage 1 commit `519ee4f`):**
+
+- `--grad-accum-steps N` — accumulate gradients over N micro-iters per
+  optimizer step. Per-sample loss is scaled by `1/N` so the accumulated
+  gradient is the per-sample MEAN (matches paper batch-loss semantics).
+  Default `1` keeps v3 behavior bit-identical; pass `16` to approximate
+  paper's batch-16 on our single-sample loader.
+- `--lr-schedule warmup_cosine` — linear warmup `0 → peak` over
+  `--warmup-iters` micro-iters, then cosine decay `peak → peak × 0.10`
+  over the remaining iters. Scheduler ticks once per OPTIMIZER step,
+  so `T_max` is in optim-step units (= `ceil(n_iters / grad_accum_steps)`).
+- NaN-diag at the first **window-level** NaN (post-clip accumulated
+  gradient non-finite) rather than the first micro-iter NaN — far more
+  diagnostic post-accum since a single bad micro-iter no longer poisons
+  weights.
+- Save-best / save-periodic / eval-every are all gated on `is_accum_end`
+  so they only fire after a real optimizer step, never mid-window.
+
+**Caveat under grad-accum:** `--nan-abort-window` counts skipped
+micro-iters. A fully-poisoned window of size N contributes N skipped
+entries, so the wall-clock-equivalent abort threshold also scales by N
+(default 50 micro-iters = ~3 windows at N=16). Scale `--nan-abort-window`
+by N if you want the same per-optim-step abort behavior.
 
 ## Known limitation: crash exposure
 

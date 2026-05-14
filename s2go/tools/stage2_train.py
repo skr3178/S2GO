@@ -26,6 +26,7 @@ Run:
 """
 import argparse
 import json
+import math
 import os
 import random
 import time
@@ -34,7 +35,7 @@ from typing import Dict, List, Optional, Sequence
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import ConstantLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, ConstantLR, LambdaLR
 
 from ..datasets.nusc_loader import NuScenesLoader
 from ..models.backbone.r50_fpn import R50FPNBackbone
@@ -190,10 +191,14 @@ def main(splits_json: str,
          n_iters: int = 1500,
          t_seq: int = 1,
          t_queue: int = 1,
-         lr: float = 1e-4,
+         lr: float = 2e-4,
          lr_backbone_mult: float = 0.25,
-         grad_clip_max_norm: float = 10.0,
-         scale_min_override: float = 0.05,
+         lr_schedule: str = 'cosine',
+         lr_min: float = 0.0,
+         warmup_iters: int = 500,
+         grad_accum_steps: int = 1,
+         grad_clip_max_norm: float = 35.0,
+         scale_min_override: float = 0.01,
          nan_abort_window: int = 50,
          sem_loss: str = 'both',
          w_occ: float = 1.0, w_kl: float = 1.0,
@@ -328,7 +333,52 @@ def main(splits_json: str,
          'lr': lr * lr_backbone_mult},
         {'params': model.parameters(), 'lr': lr},
     ], weight_decay=0.01)
-    scheduler = ConstantLR(optim, factor=1.0, total_iters=n_iters)
+
+    # Gradient accumulation: N micro-iters per optimizer step (effective batch ≈ N).
+    # Scheduler ticks per OPTIMIZER STEP, not per micro-iter, so T_max is in
+    # optim-steps. `n_iters` remains the total micro-iter budget (samples seen).
+    if grad_accum_steps < 1:
+        raise ValueError("--grad-accum-steps must be >= 1")
+    n_optim_steps = (n_iters + grad_accum_steps - 1) // grad_accum_steps
+
+    if lr_schedule == 'cosine':
+        scheduler = CosineAnnealingLR(optim, T_max=n_optim_steps, eta_min=lr_min)
+        print(f"    LR schedule: cosine "
+              f"(T_max={n_optim_steps} optim-steps, eta_min={lr_min:.0e})")
+    elif lr_schedule == 'constant':
+        scheduler = ConstantLR(optim, factor=1.0, total_iters=n_optim_steps)
+        print(f"    LR schedule: constant "
+              f"(peak lr held for all {n_optim_steps} optim-steps)")
+    elif lr_schedule == 'warmup_cosine':
+        # Linear warmup 0 → peak over `warmup_iters` micro-iters, then cosine
+        # decay to peak × 0.10 over the remaining (n_iters - warmup_iters)
+        # micro-iters. Scheduler ticks once per optim step, so convert both
+        # to optim-step units (float, since fractional).
+        warmup_optim = warmup_iters / grad_accum_steps
+        if warmup_optim >= n_optim_steps:
+            raise ValueError(
+                f"warmup_iters={warmup_iters} ≥ n_iters={n_iters} after "
+                f"dividing by grad_accum_steps={grad_accum_steps}; warmup "
+                f"spans the whole run.")
+        def _warmup_cosine_lambda(s):
+            if s < warmup_optim:
+                return s / warmup_optim
+            progress = min((s - warmup_optim) / (n_optim_steps - warmup_optim), 1.0)
+            cosine_mul = 0.5 * (1.0 + math.cos(math.pi * progress))
+            return 0.10 + 0.90 * cosine_mul
+        scheduler = LambdaLR(optim, lr_lambda=_warmup_cosine_lambda)
+        print(f"    LR schedule: warmup_cosine "
+              f"(warmup {warmup_iters} micro-iters ≈ {warmup_optim:.1f} optim-steps, "
+              f"cosine to peak×0.10 over remaining "
+              f"{n_optim_steps - warmup_optim:.1f})")
+    else:
+        raise ValueError(
+            f"unknown lr_schedule '{lr_schedule}' "
+            f"(use 'cosine', 'constant', or 'warmup_cosine')")
+    if grad_accum_steps > 1:
+        print(f"    gradient accumulation: {grad_accum_steps} micro-iters per "
+              f"optimizer step → {n_optim_steps} optim-steps over {n_iters} "
+              f"micro-iters (effective batch ≈ {grad_accum_steps})")
     sem_ignore_idx = EMPTY_CLASS_ID if ignore_empty_in_sem else -1
 
     # ── [5/6] Train loop ──────────────────────────────────────────────────
@@ -350,6 +400,8 @@ def main(splits_json: str,
     best_val_miou = -1.0
     n_best_val_saves = 0
     n_skipped = 0
+    n_skipped_windows = 0
+    window_skipped = False
     t_start = time.time()
 
     ckpt_best_train = os.path.join(out_dir, 'ckpt_best_train.pt')
@@ -426,84 +478,145 @@ def main(splits_json: str,
         for k in diag_acc:
             diag_acc[k] /= len(outs)
 
-        optim.zero_grad(set_to_none=True)
-        L.backward()
-        gnorm = nn.utils.clip_grad_norm_(
-            list(backbone.parameters()) + list(model.parameters()),
-            max_norm=grad_clip_max_norm)
-        finite = bool(torch.isfinite(L).item() and torch.isfinite(gnorm).item())
-        skipped = not finite
-        if skipped:
+        # ── Grad-accum bookkeeping ───────────────────────────────────────
+        # N micro-iters form one optimizer-step "window". zero_grad at the
+        # window start, backward scales loss by 1/N so the accumulated
+        # gradient is the per-sample MEAN (not sum) — keeps the effective LR
+        # consistent with paper-spec batched training. clip + step +
+        # scheduler.step + NaN-diag fire at window end only.
+        is_accum_start = (i % grad_accum_steps == 0)
+        is_accum_end   = ((i + 1) % grad_accum_steps == 0) or (i == n_iters - 1)
+        if is_accum_start:
+            optim.zero_grad(set_to_none=True)
+            window_skipped = False
+
+        L_micro = float(L.item())
+        L_finite = math.isfinite(L_micro)
+        if not window_skipped and L_finite:
+            (L / grad_accum_steps).backward()
+        elif not L_finite and not window_skipped:
+            # First micro-iter NaN in this window → latch and abandon window.
+            window_skipped = True
             n_skipped += 1
-            # On the FIRST NaN, dump diagnostics so we can pinpoint the source.
-            if n_skipped == 1:
-                G_last = outs[-1].raw.gaussians
-                tok = seq[0].get('_sample_token', '?')
-                with torch.no_grad():
-                    sc_min = float(G_last.scales.min().item())
-                    sc_max = float(G_last.scales.max().item())
-                    op_min = float(G_last.opacities.min().item())
-                    op_max = float(G_last.opacities.max().item())
-                print(f"  [NaN-DIAG] first NaN at iter {i}: token={tok}", flush=True)
-                print(f"  [NaN-DIAG] L={L.item():.4g}  gnorm={gnorm.item():.4g}",
-                      flush=True)
-                print(f"  [NaN-DIAG] Gaussian scales:    "
-                      f"min={sc_min:.4g}  max={sc_max:.4g}", flush=True)
-                print(f"  [NaN-DIAG] Gaussian opacities: "
-                      f"min={op_min:.4g}  max={op_max:.4g}", flush=True)
-                grad_stats = []
-                for n, p in list(backbone.named_parameters()) + \
-                        [(f"model.{nm}", pp) for nm, pp in model.named_parameters()]:
-                    if p.grad is None:
-                        continue
-                    g = p.grad
-                    has_nan = bool(torch.isnan(g).any().item())
-                    has_inf = bool(torch.isinf(g).any().item())
-                    if has_nan or has_inf:
-                        grad_stats.append((n, has_nan, has_inf,
-                                           float(g.abs().nan_to_num(0).max().item())))
-                print(f"  [NaN-DIAG] {len(grad_stats)} params with NaN/Inf grad:",
-                      flush=True)
-                for n, hn, hi, maxabs in grad_stats[:15]:
-                    print(f"    {n:60s}  NaN={hn} Inf={hi} max|g|={maxabs:.4g}",
-                          flush=True)
-            # Auto-abort if we've skipped N consecutive iters — no point continuing.
+            print(f"  [skip] iter {i}: non-finite micro-loss "
+                  f"(L={L_micro:.3g}, latching window)", flush=True)
+            optim.zero_grad(set_to_none=True)        # nuke any poisoned grads
+        else:
+            # Window already poisoned — count this micro-iter as skipped too.
+            n_skipped += 1
+
+        opa_mean = float(outs[-1].raw.gaussians.opacities.detach()
+                         .float().mean().item())
+
+        # ── Window-end: clip, NaN-check accumulated grads, step, schedule ─
+        if is_accum_end:
+            if window_skipped:
+                gnorm_val = float('nan')
+                skipped   = True
+            else:
+                gnorm = nn.utils.clip_grad_norm_(
+                    list(backbone.parameters()) + list(model.parameters()),
+                    max_norm=grad_clip_max_norm)
+                gnorm_val = float(gnorm.item())
+                if not math.isfinite(gnorm_val):
+                    # Accumulated grads went non-finite even though every
+                    # micro-iter loss was finite — overflow happened in
+                    # gsplat / G2V backward (most likely scale collapse on
+                    # bf16 boundary). Skip step + dump rich diag on first
+                    # window-level NaN.
+                    n_skipped += 1
+                    n_skipped_windows += 1
+                    if n_skipped_windows == 1:
+                        G_last = outs[-1].raw.gaussians
+                        tok = seq[0].get('_sample_token', '?')
+                        with torch.no_grad():
+                            sc_min = float(G_last.scales.min().item())
+                            sc_max = float(G_last.scales.max().item())
+                            op_min = float(G_last.opacities.min().item())
+                            op_max = float(G_last.opacities.max().item())
+                        print(f"  [NaN-DIAG] first window-NaN at iter {i}: "
+                              f"token={tok}", flush=True)
+                        print(f"  [NaN-DIAG] L_micro={L_micro:.4g}  "
+                              f"gnorm={gnorm_val:.4g}", flush=True)
+                        print(f"  [NaN-DIAG] Gaussian scales:    "
+                              f"min={sc_min:.4g}  max={sc_max:.4g}", flush=True)
+                        print(f"  [NaN-DIAG] Gaussian opacities: "
+                              f"min={op_min:.4g}  max={op_max:.4g}", flush=True)
+                        grad_stats = []
+                        for n, p in list(backbone.named_parameters()) + \
+                                [(f"model.{nm}", pp)
+                                 for nm, pp in model.named_parameters()]:
+                            if p.grad is None:
+                                continue
+                            g = p.grad
+                            has_nan = bool(torch.isnan(g).any().item())
+                            has_inf = bool(torch.isinf(g).any().item())
+                            if has_nan or has_inf:
+                                grad_stats.append(
+                                    (n, has_nan, has_inf,
+                                     float(g.abs().nan_to_num(0).max().item())))
+                        print(f"  [NaN-DIAG] {len(grad_stats)} params with "
+                              f"NaN/Inf grad:", flush=True)
+                        for n, hn, hi, maxabs in grad_stats[:15]:
+                            print(f"    {n:60s}  NaN={hn} Inf={hi} "
+                                  f"max|g|={maxabs:.4g}", flush=True)
+                    print(f"  [skip-window] iter {i}: non-finite accumulated "
+                          f"gnorm (gnorm={gnorm_val:.3g})", flush=True)
+                    optim.zero_grad(set_to_none=True)
+                    skipped = True
+                else:
+                    optim.step()
+                    skipped = False
+            scheduler.step()    # one tick per optimizer step
+
+            # Auto-abort if we've skipped N consecutive micro-iters at tail.
+            # Under grad-accum=K, a fully-poisoned window contributes K skipped
+            # entries (one per micro-iter), so to keep the wall-clock-equivalent
+            # window unchanged, scale --nan-abort-window by K when using accum.
             if n_skipped >= nan_abort_window:
-                # Count consecutive skips at the tail
                 consec = 0
                 for h in reversed(history):
                     if h.get('skipped', False):
                         consec += 1
                     else:
                         break
-                if consec >= nan_abort_window - 1:  # current iter not in history yet
-                    print(f"  [ABORT] {consec+1} consecutive NaN-skipped iters "
-                          f">= {nan_abort_window} — stopping early.", flush=True)
+                if consec >= nan_abort_window - 1:
+                    print(f"  [ABORT] {consec+1} consecutive NaN-skipped "
+                          f"iters >= {nan_abort_window} — stopping early.",
+                          flush=True)
                     break
-            print(f"  [skip] iter {i}: non-finite (L={L.item():.3g}, "
-                  f"gnorm={gnorm.item():.3g})", flush=True)
         else:
-            optim.step()
-        scheduler.step()
+            # Mid-window: no optimizer state to report; carry NaN gnorm.
+            gnorm_val = float('nan')
+            skipped   = window_skipped
 
-        opa_mean = float(outs[-1].raw.gaussians.opacities.detach()
-                         .float().mean().item())
         history.append({**diag_acc, 'iter': i,
-                         'gnorm': float(gnorm.item()),
+                         'gnorm': gnorm_val,
                          'lr': scheduler.get_last_lr()[0],
-                         'skipped': skipped, 'opa_mean': opa_mean})
+                         'skipped': skipped,
+                         'window_end': is_accum_end,
+                         'opa_mean': opa_mean})
 
-        if i % log_every == 0 or i == n_iters - 1:
+        # Log line: print at every Kth optimizer step (window-end) so the
+        # gnorm column is always meaningful (never NaN-from-mid-window). With
+        # grad_accum_steps=1 this is every K micro-iters, matching old behavior.
+        optim_step_idx = ((i + 1) // grad_accum_steps - 1) if is_accum_end else -1
+        if (is_accum_end and optim_step_idx % log_every == 0) \
+                or i == n_iters - 1:
             elapsed = time.time() - t_start
             mem = torch.cuda.max_memory_allocated() / 1024**2
-            print(f"  {i:>4} | {L.item():>7.3f} | {diag_acc['occ_bce']:>8.4f} "
+            gnorm_disp = "  nan " if not math.isfinite(gnorm_val) \
+                          else f"{gnorm_val:>6.2f}"
+            print(f"  {i:>4} | {L_micro:>7.3f} | {diag_acc['occ_bce']:>8.4f} "
                   f"| {diag_acc['sem_kl']:>7.3f} | {diag_acc['sem_ce']:>7.3f} "
-                  f"| {diag_acc['sem_lovasz']:>6.3f} | {gnorm.item():>6.2f} "
+                  f"| {diag_acc['sem_lovasz']:>6.3f} | {gnorm_disp} "
                   f"| {opa_mean:>8.3f} | {elapsed:>3.0f} | {mem:>6.0f}",
                   flush=True)
 
         # ── Save-best by train smoothed loss ──────────────────────────────
-        if not skipped and len(history) >= save_best_window:
+        # Gate on window-end so we don't save mid-accumulation (where `skipped`
+        # carries the latched window-skipped flag rather than a real verdict).
+        if is_accum_end and not skipped and len(history) >= save_best_window:
             recent = [h['total'] for h in history[-save_best_window:]
                       if not h['skipped'] and h['total'] == h['total']]
             if len(recent) >= save_best_window // 2:
@@ -523,13 +636,16 @@ def main(splits_json: str,
                           f"{ckpt_best_train}", flush=True)
 
         # ── Periodic crash-recovery save ──────────────────────────────────
-        if save_periodic_every and i > 0 and i % save_periodic_every == 0:
+        # Gate on window-end so we save a coherent post-step model state.
+        if is_accum_end and save_periodic_every and i > 0 \
+                and i % save_periodic_every == 0:
             torch.save(_build_ckpt(backbone, model, arch, sem_loss, i + 1,
                                     {'kind': 'periodic'}),
                        ckpt_periodic)
 
         # ── Periodic val eval ─────────────────────────────────────────────
-        if eval_every and i > 0 and i % eval_every == 0:
+        # Gate on window-end: only eval against the post-step model state.
+        if is_accum_end and eval_every and i > 0 and i % eval_every == 0:
             print(f"  [eval @ iter {i}] running over "
                   f"{min(eval_num_val, len(val_pos))} val sequences…",
                   flush=True)
@@ -656,8 +772,12 @@ if __name__ == "__main__":
     p.add_argument("--iters", type=int, default=1500)
     p.add_argument("--t-seq", type=int, default=1)
     p.add_argument("--t-queue", type=int, default=1)
-    # NOTE: --lr default is set further below (1e-4 post-NaN-fix).
-    p.add_argument("--grad-clip", type=float, default=10.0)
+    # NOTE: --lr default is set further below (2e-4, paper-aligned at batch 1).
+    p.add_argument("--grad-clip", type=float, default=35.0,
+                    help="Paper §3.4.4 value. Previously 10.0 as a defensive cap "
+                         "during the v1 NaN cascade — that capped every iter; "
+                         "with the cross-attn fixes in, 35.0 lets natural "
+                         "gradient magnitudes flow.")
     p.add_argument("--sem-loss", choices=['kl', 'ce_lovasz', 'both'],
                     default='both')
     p.add_argument("--w-occ", type=float, default=1.0)
@@ -679,12 +799,40 @@ if __name__ == "__main__":
     p.add_argument("--restricted-min-val-voxels", type=int, default=100)
     p.add_argument("--log-every", type=int, default=25)
     p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--scale-min", type=float, default=0.05,
-                    help="Gaussian scale floor in metres. Default 0.05 raises "
-                         "from GF-2's 0.01 to bound 1/s² gradient (400 vs 1e4).")
+    p.add_argument("--scale-min", type=float, default=0.01,
+                    help="Gaussian scale floor in metres. Default 0.01 matches "
+                         "GF-2 / paper. The previous 0.05 was a v1-era workaround "
+                         "for the NaN cascade; with cross-attn fixes in, 0.01 is "
+                         "expected to be safe again (validate with a smoke).")
     p.add_argument("--nan-abort-window", type=int, default=50,
                     help="Stop training after N consecutive NaN-skipped iters.")
-    p.add_argument("--lr", type=float, default=1e-4)
+    p.add_argument("--lr", type=float, default=2e-4,
+                    help="Paper §3.4.4 uses 4e-4 at batch 16. We're at batch 1; "
+                         "2e-4 is the sqrt-scaling-rule equivalent. Previously "
+                         "1e-4 as part of the v1 NaN workaround.")
+    p.add_argument("--lr-schedule", choices=['cosine', 'constant', 'warmup_cosine'],
+                    default='cosine',
+                    help="'cosine' (default, v3 behavior): decays peak→eta_min over "
+                         "n_optim_steps. 'constant': holds peak. 'warmup_cosine': "
+                         "linear warmup 0→peak over --warmup-iters micro-iters, "
+                         "then cosine to peak×0.10. The paper-spec choice for "
+                         "long runs (use with --grad-accum-steps 16 for batch-16 "
+                         "equivalent).")
+    p.add_argument("--lr-min", type=float, default=0.0,
+                    help="eta_min for the 'cosine' schedule. Ignored for the "
+                         "others. Default 0.0 (matches v3).")
+    p.add_argument("--warmup-iters", type=int, default=500,
+                    help="warmup length in MICRO-ITERS for --lr-schedule "
+                         "warmup_cosine. Ignored for other schedules. Default 500.")
+    p.add_argument("--grad-accum-steps", type=int, default=1,
+                    help="micro-iters per optimizer step. Effective batch ≈ this "
+                         "value (per-sample loss scaled by 1/N, gradients "
+                         "accumulated over N micro-iters). Default 1 (no accum, "
+                         "bit-identical to v3). Use 16 to approximate paper-spec "
+                         "effective batch on a single-sample loader. NOTE: "
+                         "--nan-abort-window counts micro-iters, so a "
+                         "fully-poisoned window contributes N skipped entries; "
+                         "scale --nan-abort-window by N when using accum.")
     a = p.parse_args()
     main(splits_json=a.splits_json,
          out_dir=a.out_dir,
@@ -696,7 +844,9 @@ if __name__ == "__main__":
          ffn_override=a.ffn,
          n_iters=a.iters,
          t_seq=a.t_seq, t_queue=a.t_queue,
-         lr=a.lr, grad_clip_max_norm=a.grad_clip,
+         lr=a.lr, lr_schedule=a.lr_schedule, lr_min=a.lr_min,
+         warmup_iters=a.warmup_iters, grad_accum_steps=a.grad_accum_steps,
+         grad_clip_max_norm=a.grad_clip,
          sem_loss=a.sem_loss,
          w_occ=a.w_occ, w_kl=a.w_kl, w_ce=a.w_ce, w_lovasz=a.w_lovasz,
          occ_pos_weight=a.occ_pos_weight,
