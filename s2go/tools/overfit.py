@@ -15,11 +15,12 @@ Run:
     cd /media/skr/storage/self_driving/S2GO
     python -m s2go.tools.overfit
 """
+import math
 import time
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR, ConstantLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, ConstantLR, LambdaLR
 
 from ..datasets.nusc_loader import NuScenesLoader
 from ..models.backbone.r50_fpn import R50FPNBackbone
@@ -304,13 +305,15 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
          t_queue: int = 4,
          lr_schedule: str = 'constant',
          lr_min: float = 1e-5,
+         warmup_iters: int = 500,
          freeze_backbone: bool = False,
          limit_data: int = None,
          history_path: str = None,
          save_path: str = None,
          save_best: bool = False,
          save_best_window: int = 50,
-         save_best_cooldown: int = 100):
+         save_best_cooldown: int = 100,
+         grad_accum_steps: int = 1):
     assert not (denoise_only and depth_only), \
         "--denoise-only and --depth-only are mutually exclusive"
     # Denoise-only convenience: overrides
@@ -391,19 +394,51 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
              'lr': lr * lr_backbone_mult},
             {'params': seg.parameters(), 'lr': lr},
         ], weight_decay=0.01)
+    # Gradient accumulation: N micro-iters per optimizer step (effective batch ≈ N).
+    # The scheduler ticks per OPTIMIZER STEP, not per micro-iter, so T_max is in
+    # optimizer steps. n_iters is still the total micro-iter budget (samples seen).
+    if grad_accum_steps < 1:
+        raise ValueError("--grad-accum-steps must be >= 1")
+    n_optim_steps = (n_iters + grad_accum_steps - 1) // grad_accum_steps
+
     # LR schedule. For short diagnostic runs (50-500 iters), cosine-to-zero
     # makes the last 20% of iters effectively useless because lr→0. Default is
     # 'constant' so LR stays at its peak throughout. Use 'cosine' (decays to
     # lr_min) for a paper-spec multi-epoch run where decay matches horizon.
     if lr_schedule == 'cosine':
-        scheduler = CosineAnnealingLR(optim, T_max=n_iters, eta_min=lr_min)
-        print(f"    LR schedule: cosine (T_max={n_iters}, eta_min={lr_min:.0e})")
+        scheduler = CosineAnnealingLR(optim, T_max=n_optim_steps, eta_min=lr_min)
+        print(f"    LR schedule: cosine (T_max={n_optim_steps} optim-steps, eta_min={lr_min:.0e})")
     elif lr_schedule == 'constant':
-        # factor=1.0, total_iters=n_iters keeps LR at peak the entire run.
-        scheduler = ConstantLR(optim, factor=1.0, total_iters=n_iters)
-        print(f"    LR schedule: constant (peak lr held for all {n_iters} iters)")
+        # factor=1.0, total_iters=n_optim_steps keeps LR at peak the entire run.
+        scheduler = ConstantLR(optim, factor=1.0, total_iters=n_optim_steps)
+        print(f"    LR schedule: constant (peak lr held for all {n_optim_steps} optim-steps)")
+    elif lr_schedule == 'warmup_cosine':
+        # Linear warmup 0 → peak over `warmup_iters` micro-iters, then cosine
+        # decay to peak × 0.10 over the remaining (n_iters - warmup_iters)
+        # micro-iters. Scheduler ticks once per optim step, so convert both
+        # warmup and total to optim-step units (float, since fractional).
+        warmup_optim = warmup_iters / grad_accum_steps
+        if warmup_optim >= n_optim_steps:
+            raise ValueError(f"warmup_iters={warmup_iters} ≥ n_iters={n_iters} "
+                              f"after dividing by grad_accum_steps={grad_accum_steps}; "
+                              f"warmup spans the whole run.")
+        def _warmup_cosine_lambda(s):
+            if s < warmup_optim:
+                return s / warmup_optim
+            progress = min((s - warmup_optim) / (n_optim_steps - warmup_optim), 1.0)
+            cosine_mul = 0.5 * (1.0 + math.cos(math.pi * progress))
+            return 0.10 + 0.90 * cosine_mul
+        scheduler = LambdaLR(optim, lr_lambda=_warmup_cosine_lambda)
+        print(f"    LR schedule: warmup_cosine "
+              f"(warmup {warmup_iters} micro-iters ≈ {warmup_optim:.1f} optim-steps, "
+              f"cosine to peak×0.10 over remaining {n_optim_steps - warmup_optim:.1f})")
     else:
-        raise ValueError(f"unknown lr_schedule '{lr_schedule}' (use 'cosine' or 'constant')")
+        raise ValueError(f"unknown lr_schedule '{lr_schedule}' "
+                         f"(use 'cosine', 'constant', or 'warmup_cosine')")
+    if grad_accum_steps > 1:
+        print(f"    gradient accumulation: {grad_accum_steps} micro-iters per "
+              f"optimizer step → {n_optim_steps} optim-steps over {n_iters} micro-iters "
+              f"(effective batch ≈ {grad_accum_steps})")
 
     # Stage-1 losses (Eq. 8); λ defaults from Stage1_design.md D6
     rgb_l1_w = 1.0 - rgb_ssim_weight if rgb_ssim_weight > 0 else 1.0
@@ -476,6 +511,12 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
     n_skipped = 0
     current_sample_token = "(cached)"     # default; overridden in streaming branch
 
+    # Grad-accum window state. `window_skipped` latches True as soon as any
+    # micro-iter in the current window produces non-finite loss; once latched,
+    # we abandon the whole window at its end (no optimizer step, grads zeroed).
+    window_skipped = False
+    nan_zero_dict = {f'gnorm_{name}': float('nan') for name in HEAD_SLICES}
+
     # ── Save-best tracking ───────────────────────────────────────────────
     # Track the lowest moving-average (window=save_best_window) of L_total
     # over finite (non-skipped) iters. Save weights to `<save_path>_best.pt`
@@ -545,18 +586,33 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
                                             denoise_only=denoise_only,
                                             depth_only=depth_only)
 
-        # Backward + step (gradient clip; tightened from paper's 35 → 10 to
-        # catch gsplat-backward overflows on degenerate streaming scenes before
-        # they cascade to inf, then to NaN via bf16 `inf × (max/inf)` arithmetic).
-        optim.zero_grad()
-        scaler.scale(L).backward()
-        scaler.unscale_(optim)
+        # ── Grad-accum bookkeeping ───────────────────────────────────────
+        is_accum_start = (i % grad_accum_steps == 0)
+        is_accum_end   = ((i + 1) % grad_accum_steps == 0) or (i == n_iters - 1)
+        if is_accum_start:
+            optim.zero_grad(set_to_none=True)
+            window_skipped = False
 
-        # ── Diagnostics (after backward, before clip) ────────────────────
-        # Per-head grad norms (weight + bias) for every output slice. Zero =
-        # that head receives no gradient (e.g., velocity with --no-warp).
-        head_grads = {f'gnorm_{name}': _head_grad_norm(lin, sl)
-                       for name, (lin, sl) in HEAD_SLICES.items()}
+        # Backward (scaled by 1/N so accumulated grad is the per-sample mean,
+        # not the sum — keeps the effective LR consistent with paper-spec
+        # batched training). Skip backward if the window is already poisoned
+        # to save compute and avoid touching grad buffers further.
+        L_micro = L.item()
+        L_finite = (L_micro == L_micro) and not (L_micro == float('inf') or L_micro == float('-inf'))
+        if not window_skipped and L_finite:
+            scaler.scale(L / grad_accum_steps).backward()
+        elif not L_finite and not window_skipped:
+            window_skipped = True
+            n_skipped += 1
+            print(f"  [skip] iter {i}: non-finite micro-loss "
+                  f"(L={L_micro:.3g}, token={current_sample_token})", flush=True)
+            optim.zero_grad(set_to_none=True)       # nuke any poisoned grads
+        else:
+            n_skipped += 1
+            print(f"  [skip] iter {i}: window already poisoned "
+                  f"(token={current_sample_token})", flush=True)
+
+        # ── Forward-state diagnostics (every micro-iter; don't need acc-grad) ─
         # Gaussian-state distribution stats on the last forward (last frame
         # of the sequence — most-recent active state).
         last_out = outputs[-1]
@@ -564,35 +620,51 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
         # Memory-queue + propagator state after the sequence's last frame.
         queue_stats = _queue_propagator_stats(seg, last_out.prop)
 
-        gnorm = nn.utils.clip_grad_norm_(
-            list(backbone.parameters()) + list(seg.parameters()),
-            max_norm=grad_clip_max_norm)
-
-        # ── NaN / inf guard ──────────────────────────────────────────────
-        # If either the loss or the post-clip gradient norm is non-finite,
-        # skip the optimizer step entirely. This prevents a single bad scene
-        # from poisoning all weights with NaN (see hacks.md once added, plus
-        # `out/barebones_full_part1_5000iter/` post-mortem at iter 2919).
-        finite = bool(torch.isfinite(L).item() and torch.isfinite(gnorm).item())
-        skipped = not finite
-        if skipped:
-            n_skipped += 1
-            print(f"  [skip] iter {i}: non-finite loss/gnorm "
-                  f"(L={L.item():.3g}, gnorm={gnorm.item():.3g}, "
-                  f"token={current_sample_token})", flush=True)
-            optim.zero_grad(set_to_none=True)        # drop the bad gradient
+        # ── Window-end: clip, NaN-check accumulated grads, step, schedule ─
+        if is_accum_end:
+            if window_skipped:
+                head_grads = dict(nan_zero_dict)
+                gnorm_val  = float('nan')
+                skipped    = True
+            else:
+                scaler.unscale_(optim)
+                # Per-head grad norms (computed once per optimizer step, on
+                # the accumulated gradient).
+                head_grads = {f'gnorm_{name}': _head_grad_norm(lin, sl)
+                              for name, (lin, sl) in HEAD_SLICES.items()}
+                gnorm = nn.utils.clip_grad_norm_(
+                    list(backbone.parameters()) + list(seg.parameters()),
+                    max_norm=grad_clip_max_norm)
+                gnorm_val = gnorm.item()
+                if not torch.isfinite(gnorm).item():
+                    # Accumulated grads went non-finite even though every
+                    # micro-iter loss was finite — overflow happened in the
+                    # gsplat backward (most likely under bf16). Skip step.
+                    n_skipped += 1
+                    print(f"  [skip-window] iter {i}: non-finite accumulated gnorm "
+                          f"(gnorm={gnorm_val:.3g}, token={current_sample_token})", flush=True)
+                    optim.zero_grad(set_to_none=True)
+                    skipped = True
+                else:
+                    scaler.step(optim)
+                    scaler.update()
+                    skipped = False
+            scheduler.step()    # one tick per optimizer step
         else:
-            scaler.step(optim)
-            scaler.update()
-        scheduler.step()
+            # Mid-window: no optimizer state to report; carry NaNs in history
+            head_grads = dict(nan_zero_dict)
+            gnorm_val  = float('nan')
+            skipped    = window_skipped
 
-        # Everything to history (full detail, every iter).
+        # Everything to history (full detail, every micro-iter). gnorm and
+        # head_grads are NaN for mid-window iters (only meaningful at window-end).
         history.append({
             **parts,
-            'total':       L.item(),
-            'gnorm':       gnorm.item(),
+            'total':       L_micro,
+            'gnorm':       gnorm_val,
             'lr':          scheduler.get_last_lr()[0],
             'skipped':     skipped,
+            'window_end':  is_accum_end,
             'sample_token': current_sample_token,
             **head_grads,
             **{f'gauss_{k}_{stat}': v[stat]
@@ -602,8 +674,10 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
 
         # ── Save-best logic ──────────────────────────────────────────────
         # Compute smoothed loss over the last `save_best_window` finite iters;
-        # save weights when smoothed reaches a new low (with cooldown).
-        if save_best and save_path is not None and not skipped \
+        # save weights when smoothed reaches a new low (with cooldown). Gate on
+        # window-end (skipped is meaningful then; mid-window we may carry stale
+        # window_skipped flag).
+        if save_best and save_path is not None and is_accum_end and not skipped \
                 and len(history) >= save_best_window:
             recent_finite = [h['total'] for h in history[-save_best_window:]
                               if not h['skipped'] and h['total'] == h['total']]
@@ -627,14 +701,19 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
                           f"({save_best_window}-iter MA) = {smoothed:.4f} m → "
                           f"saved {best_path}", flush=True)
 
-        if i % log_every == 0 or i == n_iters - 1:
+        # Print log line at every Kth optimizer step (window-end). With N=1
+        # this is every K micro-iters, matching the old behavior. With N>1
+        # it's every K window-ends (so the gnorm column always has a
+        # meaningful value, never NaN-from-mid-window).
+        optim_step_idx = (i + 1) // grad_accum_steps - 1 if is_accum_end else -1
+        if (is_accum_end and optim_step_idx % log_every == 0) or i == n_iters - 1:
             elapsed = time.time() - t_start
             mem = torch.cuda.max_memory_allocated() / 1024**2
             depth_split = _fmt_split(parts['depth_t0'], parts['depth_minus'],
                                       parts['depth_plus'], "{:>6.3f}")
             rgb_split   = _fmt_split(parts['rgb_t0'], parts['rgb_minus'],
                                       parts['rgb_plus'], "{:>6.4f}")
-            print(f"  {i:>4} | {L.item():>7.3f} | {parts['denoise']:>6.3f} | "
+            print(f"  {i:>4} | {L_micro:>7.3f} | {parts['denoise']:>6.3f} | "
                   f"{parts['depth']:>6.3f} | {parts['rgb']:>6.4f} | "
                   f"{depth_split} | {rgb_split} | "
                   f"{head_grads['gnorm_velocity']:>7.2e} | "
@@ -756,13 +835,19 @@ if __name__ == "__main__":
                     help="max_norm for clip_grad_norm_. Default 10 (tightened from "
                          "paper's 35 after the iter-2919 bf16 gradient-explosion "
                          "incident). Lower = more aggressive overflow protection.")
-    p.add_argument("--lr-schedule", choices=['constant', 'cosine'], default='constant',
+    p.add_argument("--lr-schedule", choices=['constant', 'cosine', 'warmup_cosine'],
+                    default='constant',
                     help="LR schedule. 'constant' (default for short diagnostic runs) "
                          "holds peak LR for all n_iters. 'cosine' decays to --lr-min "
-                         "over n_iters; appropriate for paper-spec multi-epoch runs.")
+                         "over n_iters; appropriate for paper-spec multi-epoch runs. "
+                         "'warmup_cosine' linearly warms 0→peak over --warmup-iters "
+                         "micro-iters, then cosine to peak×0.10 over the remainder.")
     p.add_argument("--lr-min", type=float, default=1e-5,
                     help="minimum LR for the cosine schedule. Ignored when "
                          "--lr-schedule=constant. Default 1e-5 (avoid lr=0 starvation).")
+    p.add_argument("--warmup-iters", type=int, default=500,
+                    help="warmup length in MICRO-ITERS for --lr-schedule=warmup_cosine. "
+                         "Ignored for other schedules. Default 500.")
     p.add_argument("--freeze-backbone", action="store_true",
                     help="freeze backbone (eval mode + no grad). Reduces optimizer noise; "
                          "useful for denoise-only diagnostic runs.")
@@ -788,6 +873,12 @@ if __name__ == "__main__":
                     help="min iters between consecutive best-saves (rate limit "
                          "so we don't write 413 MB of weights on every improving "
                          "iter during a fast-descent phase).")
+    p.add_argument("--grad-accum-steps", type=int, default=1,
+                    help="number of micro-iters per optimizer step. Effective "
+                         "batch ≈ this value (per-sample loss is scaled by 1/N "
+                         "and gradients accumulated over N micro-iters). "
+                         "Default 1 (no accumulation). Use 16 to approximate "
+                         "paper-spec effective batch on a single-sample loader.")
     a = p.parse_args()
 
     # ── Resolve recipe defaults ────────────────────────────────────────────
@@ -826,10 +917,12 @@ if __name__ == "__main__":
          t_queue=a.t_queue,
          lr_schedule=a.lr_schedule,
          lr_min=a.lr_min,
+         warmup_iters=a.warmup_iters,
          freeze_backbone=a.freeze_backbone,
          limit_data=a.limit_data,
          history_path=a.history_path,
          save_path=a.save_path,
          save_best=a.save_best,
          save_best_window=a.save_best_window,
-         save_best_cooldown=a.save_best_cooldown)
+         save_best_cooldown=a.save_best_cooldown,
+         grad_accum_steps=a.grad_accum_steps)
