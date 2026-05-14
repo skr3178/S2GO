@@ -1,5 +1,25 @@
 # Stage-2 fixes — ranked by impact
 
+## Status (2026-05-14)
+
+- **Tier A #1–#4: applied** to `s2go/tools/stage2_train.py` in the same commit
+  that introduces this status block. Next training run should observe whether
+  the iter-500-vs-iter-1000 identical-mIoU symptom disappears on its own.
+- **Tier B #5 (`scale_min`): applied.** Default reverted to `0.05`. The v3/v4
+  assumption that cross-attn fixes made `0.01` safe was empirically disproven:
+  `v4_10k` NaN'd at iter 1071 and `smoke_tier_a` (with Tier A applied) NaN'd
+  at iter 62, both with `scale_min=0.01`. The only 1500-iter run that finished
+  cleanly (`stage2_row_a_train_v2`) used `scale_min=0.05`. Time-to-cascade is
+  12-16 iters once `s` first touches the danger zone — sharp transition, not
+  a graceful drift.
+- **Tier B #6 (label remap): not needed.** Verified with `np.unique` on five
+  SurroundOcc val npys — raw labels are `{0..16}` as the code already assumes,
+  not `{1..17}`. The original concern was based on stale data-flow notes.
+- **Tier C #7–#10: pending**, run only if Tier A alone doesn't resolve the
+  silent non-convergence.
+
+---
+
 Consolidated from the three diagnostic passes on `stage2_train.py`. Items are
 ordered by impact: known bugs first, then unsafe defaults, then diagnostic probes
 that pinpoint the silent semantic-head failure.

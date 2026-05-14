@@ -198,12 +198,12 @@ def main(splits_json: str,
          warmup_iters: int = 500,
          grad_accum_steps: int = 1,
          grad_clip_max_norm: float = 35.0,
-         scale_min_override: float = 0.01,
+         scale_min_override: float = 0.05,
          nan_abort_window: int = 50,
          sem_loss: str = 'both',
          w_occ: float = 1.0, w_kl: float = 1.0,
          w_ce: float = 10.0, w_lovasz: float = 1.0,
-         occ_pos_weight: float = 16.0,
+         occ_pos_weight: float = 1.0,
          ignore_empty_in_sem: bool = True,
          g2v_backend: str = 'cuda',
          g2v_chunk_voxels_train: int = 2048,
@@ -251,8 +251,13 @@ def main(splits_json: str,
     # ── [2/6] Model arch ──────────────────────────────────────────────────
     if from_scratch:
         print("[2/6] From-scratch arch (no Stage-1 ckpt)")
+        # Paper-spec T2 (= paper Table 3 architecture, same across rows a-e).
+        # The earlier T0-tier default (num_layers=2, num_pts=4, ffn=2048) was
+        # a 12 GB GPU workaround from before the CUDA G2V backend dropped peak
+        # graph memory ~70 GB → ~360 MB. Override at the CLI with --num-layers
+        # / --num-pts / --ffn for dev / smoke runs if T2 OOMs on smaller cards.
         arch = dict(K=900, J=10, embed_dims=768,
-                    num_layers=2, num_pts=4, feedforward_channels=2048)
+                    num_layers=6, num_pts=13, feedforward_channels=3072)
         ckpt = None
     else:
         assert stage1_ckpt and os.path.isfile(stage1_ckpt), \
@@ -566,8 +571,8 @@ def main(splits_json: str,
                     skipped = True
                 else:
                     optim.step()
+                    scheduler.step()    # advance LR only on real optimizer steps
                     skipped = False
-            scheduler.step()    # one tick per optimizer step
 
             # Auto-abort if we've skipped N consecutive micro-iters at tail.
             # Under grad-accum=K, a fully-poisoned window contributes K skipped
@@ -636,16 +641,20 @@ def main(splits_json: str,
                           f"{ckpt_best_train}", flush=True)
 
         # ── Periodic crash-recovery save ──────────────────────────────────
-        # Gate on window-end so we save a coherent post-step model state.
-        if is_accum_end and save_periodic_every and i > 0 \
-                and i % save_periodic_every == 0:
+        # Gate on optimizer-step count (not micro-iter count) so the cadence
+        # is independent of grad_accum_steps. With grad_accum_steps=16 and
+        # save_periodic_every=200, the old `i % 200 == 0` gate was almost
+        # never satisfied jointly with `is_accum_end` (modulo collision).
+        if is_accum_end and save_periodic_every and optim_step_idx > 0 \
+                and optim_step_idx % save_periodic_every == 0:
             torch.save(_build_ckpt(backbone, model, arch, sem_loss, i + 1,
                                     {'kind': 'periodic'}),
                        ckpt_periodic)
 
         # ── Periodic val eval ─────────────────────────────────────────────
-        # Gate on window-end: only eval against the post-step model state.
-        if is_accum_end and eval_every and i > 0 and i % eval_every == 0:
+        # Gate on optimizer-step count — see save-periodic block above.
+        if is_accum_end and eval_every and optim_step_idx > 0 \
+                and optim_step_idx % eval_every == 0:
             print(f"  [eval @ iter {i}] running over "
                   f"{min(eval_num_val, len(val_pos))} val sequences…",
                   flush=True)
@@ -762,8 +771,9 @@ if __name__ == "__main__":
                     help="path to JSON with train_start_tokens + val_start_tokens")
     p.add_argument("--out-dir", type=str, required=True)
     p.add_argument("--stage1-ckpt", type=str, default=None)
-    p.add_argument("--from-scratch", action="store_true", default=True,
-                    help="train Stage 2 from scratch (row (a) ablation)")
+    p.add_argument("--from-scratch", action="store_true", default=False,
+                    help="train Stage 2 from scratch (row (a) ablation). "
+                         "Implicit when --stage1-ckpt is not provided.")
     p.add_argument("--query-init", choices=['learned', 'fps_lidar'],
                     default='learned')
     p.add_argument("--num-layers", type=int, default=None)
@@ -784,7 +794,15 @@ if __name__ == "__main__":
     p.add_argument("--w-kl", type=float, default=1.0)
     p.add_argument("--w-ce", type=float, default=10.0)
     p.add_argument("--w-lovasz", type=float, default=1.0)
-    p.add_argument("--occ-pos-weight", type=float, default=16.0)
+    p.add_argument("--occ-pos-weight", type=float, default=1.0,
+                    help="BCE pos_weight on the occupancy loss. Default 1.0 "
+                         "matches the balanced sparse sampler (n_pos = "
+                         "voxel_sample_size//2; positives are ~50pct of every "
+                         "batch). Raise to ~16 only if you switch to dense "
+                         "full-grid training where >95pct of voxels are empty. "
+                         "Previously defaulted to 16.0, which double-corrected "
+                         "the class imbalance under the sparse path and biased "
+                         "the model toward predicting occupied everywhere.")
     p.add_argument("--no-ignore-empty", action="store_true")
     p.add_argument("--g2v-backend", choices=['torch', 'cuda'], default='cuda')
     p.add_argument("--voxel-sample-size", type=int, default=4096)
@@ -799,11 +817,18 @@ if __name__ == "__main__":
     p.add_argument("--restricted-min-val-voxels", type=int, default=100)
     p.add_argument("--log-every", type=int, default=25)
     p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--scale-min", type=float, default=0.01,
-                    help="Gaussian scale floor in metres. Default 0.01 matches "
-                         "GF-2 / paper. The previous 0.05 was a v1-era workaround "
-                         "for the NaN cascade; with cross-attn fixes in, 0.01 is "
-                         "expected to be safe again (validate with a smoke).")
+    p.add_argument("--scale-min", type=float, default=0.05,
+                    help="Gaussian scale floor in metres. Default 0.05 is the "
+                         "empirically-validated value (the only 1500-iter "
+                         "row-(a) v2 run that finished with 0/1500 NaN-skips). "
+                         "GF-2 / paper default is 0.01 but in our bf16 setup "
+                         "that drives 1/s^4 backward magnitudes ~10^8 into the "
+                         "bf16 mantissa cancellation cliff, producing a sharp "
+                         "NaN cascade (smoke_tier_a iter 62; v4_10k iter 1071 "
+                         "— always within 12-16 iters of the first scale-floor "
+                         "touch). The v3 revert to 0.01 was based on the "
+                         "working assumption that cross-attn fixes addressed "
+                         "this; v4_10k disproved that.")
     p.add_argument("--nan-abort-window", type=int, default=50,
                     help="Stop training after N consecutive NaN-skipped iters.")
     p.add_argument("--lr", type=float, default=2e-4,
@@ -834,10 +859,14 @@ if __name__ == "__main__":
                          "fully-poisoned window contributes N skipped entries; "
                          "scale --nan-abort-window by N when using accum.")
     a = p.parse_args()
+    # Coalesce: from-scratch is implicit when no --stage1-ckpt was given.
+    # Without this, --from-scratch's argparse default was permanently True
+    # and the Stage-1 bridge path could never run from CLI.
+    from_scratch = a.from_scratch or (a.stage1_ckpt is None)
     main(splits_json=a.splits_json,
          out_dir=a.out_dir,
          stage1_ckpt=a.stage1_ckpt,
-         from_scratch=a.from_scratch,
+         from_scratch=from_scratch,
          query_init=a.query_init,
          num_layers_override=a.num_layers,
          num_pts_override=a.num_pts,
