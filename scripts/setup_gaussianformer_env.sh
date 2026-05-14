@@ -18,9 +18,9 @@
 set -euo pipefail
 
 # ---- paths ----------------------------------------------------------------
-REPO_DIR="/media/skr/storage/self_driving/S2GO/reference_code/GaussianFormer"
-ENV_PREFIX="/media/skr/storage/conda_envs/selfocc"   # follows existing convention
-CONDA_BASE="/home/skr/miniconda3"
+REPO_DIR="/home/satya/skr/S2GO/reference_code/GaussianFormer"
+ENV_PREFIX="/home/satya/conda_envs/selfocc"          # local path on this PC (no /media symlink)
+CONDA_BASE="/home/satya/anaconda3"
 
 # ---- 1. enable `conda` in this shell -------------------------------------
 source "${CONDA_BASE}/etc/profile.d/conda.sh"
