@@ -303,9 +303,13 @@ def main(splits_json: str,
         query_init=query_init,
     ).to(device)
     if ckpt is not None:
-        backbone.load_state_dict(ckpt['backbone'], strict=False)
-        model.load_stage1_state(ckpt, strict=False)
+        bb_missing, bb_unexpected = backbone.load_state_dict(ckpt['backbone'], strict=False)
+        seg_missing, seg_unexpected, head_partial = \
+            model.load_stage1_state(ckpt, strict=False)
         print("    backbone + segmentor: Stage-1 weights loaded")
+        print(f"      backbone:  missing={len(bb_missing)}, unexpected={len(bb_unexpected)}")
+        print(f"      segmentor: missing={len(seg_missing)}, unexpected={len(seg_unexpected)}, "
+              f"head_partial_transferred={head_partial}")
     else:
         print("    backbone: torchvision ResNet50 pretrained init")
         print("    segmentor + semantic head: random init")
