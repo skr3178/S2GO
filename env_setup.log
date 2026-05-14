@@ -1,0 +1,2327 @@
+==> Creating conda env at /home/satya/conda_envs/selfocc (python 3.8.16)
+Retrieving notices: - \ | done
+Channels:
+ - defaults
+Platform: linux-64
+Collecting package metadata (repodata.json): ...working... done
+Solving environment: ...working... done
+
+
+==> WARNING: A newer version of conda exists. <==
+    current version: 24.11.3
+    latest version: 26.3.2
+
+Please update conda by running
+
+    $ conda update -n base -c defaults conda
+
+
+
+## Package Plan ##
+
+  environment location: /home/satya/conda_envs/selfocc
+
+  added / updated specs:
+    - python=3.8.16
+
+
+The following packages will be downloaded:
+
+    package                    |            build
+    ---------------------------|-----------------
+    ld_impl_linux-64-2.44      |       h9e0c5a2_3         725 KB
+    libffi-3.4.8               |       hc5d346e_2         136 KB
+    libzlib-1.3.1              |       h47b2149_1          59 KB
+    openssl-3.5.6              |       h1b28b03_0         5.6 MB
+    pip-24.2                   |   py38h06a4308_0         2.2 MB
+    python-3.8.16              |       h955ad1f_4        23.9 MB
+    setuptools-75.1.0          |   py38h06a4308_0         1.7 MB
+    sqlite-3.51.2              |       h3e8d24a_0         1.2 MB
+    wheel-0.44.0               |   py38h06a4308_0         108 KB
+    xz-5.8.2                   |       h448239c_0         621 KB
+    zlib-1.3.1                 |       h47b2149_1          89 KB
+    ------------------------------------------------------------
+                                           Total:        36.4 MB
+
+The following NEW packages will be INSTALLED:
+
+  _libgcc_mutex      pkgs/main/linux-64::_libgcc_mutex-0.1-main 
+  _openmp_mutex      pkgs/main/linux-64::_openmp_mutex-5.1-1_gnu 
+  ca-certificates    pkgs/main/linux-64::ca-certificates-2026.3.19-h06a4308_0 
+  ld_impl_linux-64   pkgs/main/linux-64::ld_impl_linux-64-2.44-h9e0c5a2_3 
+  libffi             pkgs/main/linux-64::libffi-3.4.8-hc5d346e_2 
+  libgcc             pkgs/main/linux-64::libgcc-15.2.0-h69a1729_7 
+  libgcc-ng          pkgs/main/linux-64::libgcc-ng-15.2.0-h166f726_7 
+  libgomp            pkgs/main/linux-64::libgomp-15.2.0-h4751f2c_7 
+  libstdcxx          pkgs/main/linux-64::libstdcxx-15.2.0-h39759b7_7 
+  libstdcxx-ng       pkgs/main/linux-64::libstdcxx-ng-15.2.0-hc03a8fd_7 
+  libxcb             pkgs/main/linux-64::libxcb-1.17.0-h9b100fa_0 
+  libzlib            pkgs/main/linux-64::libzlib-1.3.1-h47b2149_1 
+  ncurses            pkgs/main/linux-64::ncurses-6.5-h7934f7d_0 
+  openssl            pkgs/main/linux-64::openssl-3.5.6-h1b28b03_0 
+  pip                pkgs/main/linux-64::pip-24.2-py38h06a4308_0 
+  pthread-stubs      pkgs/main/linux-64::pthread-stubs-0.3-h0ce48e5_1 
+  python             pkgs/main/linux-64::python-3.8.16-h955ad1f_4 
+  readline           pkgs/main/linux-64::readline-8.3-hc2a1206_0 
+  setuptools         pkgs/main/linux-64::setuptools-75.1.0-py38h06a4308_0 
+  sqlite             pkgs/main/linux-64::sqlite-3.51.2-h3e8d24a_0 
+  tk                 pkgs/main/linux-64::tk-8.6.15-h54e0aa7_0 
+  wheel              pkgs/main/linux-64::wheel-0.44.0-py38h06a4308_0 
+  xorg-libx11        pkgs/main/linux-64::xorg-libx11-1.8.12-h9b100fa_1 
+  xorg-libxau        pkgs/main/linux-64::xorg-libxau-1.0.12-h9b100fa_0 
+  xorg-libxdmcp      pkgs/main/linux-64::xorg-libxdmcp-1.1.5-h9b100fa_0 
+  xorg-xorgproto     pkgs/main/linux-64::xorg-xorgproto-2024.1-h5eee18b_1 
+  xz                 pkgs/main/linux-64::xz-5.8.2-h448239c_0 
+  zlib               pkgs/main/linux-64::zlib-1.3.1-h47b2149_1 
+
+
+
+Downloading and Extracting Packages: ...working...python-3.8.16        | 23.9 MB   |            |   0% 
+openssl-3.5.6        | 5.6 MB    |            |   0% [A
+
+pip-24.2             | 2.2 MB    |            |   0% [A[A
+
+
+setuptools-75.1.0    | 1.7 MB    |            |   0% [A[A[A
+
+
+
+sqlite-3.51.2        | 1.2 MB    |            |   0% [A[A[A[A
+
+
+
+
+ld_impl_linux-64-2.4 | 725 KB    |            |   0% [A[A[A[A[A
+
+
+
+
+
+xz-5.8.2             | 621 KB    |            |   0% [A[A[A[A[A[A
+
+
+
+
+
+
+libffi-3.4.8         | 136 KB    |            |   0% [A[A[A[A[A[A[A
+
+
+
+
+
+
+
+wheel-0.44.0         | 108 KB    |            |   0% [A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+zlib-1.3.1           | 89 KB     |            |   0% [A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+libzlib-1.3.1        | 59 KB     |            |   0% [A[A[A[A[A[A[A[A[A[A
+openssl-3.5.6        | 5.6 MB    | ##3        |  24% [A
+
+pip-24.2             | 2.2 MB    | #9         |  19% [A[A
+
+
+
+sqlite-3.51.2        | 1.2 MB    | ######2    |  62% [A[A[A[Apython-3.8.16        | 23.9 MB   |            |   1% 
+
+
+setuptools-75.1.0    | 1.7 MB    | ######     |  60% [A[A[A
+
+
+setuptools-75.1.0    | 1.7 MB    | ########## | 100% [A[A[A
+
+
+
+sqlite-3.51.2        | 1.2 MB    | ########## | 100% [A[A[A[A
+
+
+
+
+ld_impl_linux-64-2.4 | 725 KB    | 2          |   2% [A[A[A[A[A
+
+
+
+sqlite-3.51.2        | 1.2 MB    | ########## | 100% [A[A[A[A
+openssl-3.5.6        | 5.6 MB    | ########## | 100% [A
+
+
+
+
+
+xz-5.8.2             | 621 KB    | 2          |   3% [A[A[A[A[A[A
+
+
+
+
+ld_impl_linux-64-2.4 | 725 KB    | ########## | 100% [A[A[A[A[A
+
+
+
+
+
+xz-5.8.2             | 621 KB    | ########## | 100% [A[A[A[A[A[Apython-3.8.16        | 23.9 MB   | #2         |  12% 
+
+pip-24.2             | 2.2 MB    | ########## | 100% [A[A
+
+pip-24.2             | 2.2 MB    | ########## | 100% [A[A
+
+
+
+
+
+
+libffi-3.4.8         | 136 KB    | #1         |  12% [A[A[A[A[A[A[A
+
+
+
+
+
+
+libffi-3.4.8         | 136 KB    | ########## | 100% [A[A[A[A[A[A[A
+
+
+
+
+ld_impl_linux-64-2.4 | 725 KB    | ########## | 100% [A[A[A[A[A
+
+
+
+
+
+
+
+
+zlib-1.3.1           | 89 KB     | #7         |  18% [A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+wheel-0.44.0         | 108 KB    | #4         |  15% [A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+zlib-1.3.1           | 89 KB     | ########## | 100% [A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+libzlib-1.3.1        | 59 KB     | ##7        |  27% [A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+libzlib-1.3.1        | 59 KB     | ########## | 100% [A[A[A[A[A[A[A[A[A[Apython-3.8.16        | 23.9 MB   | ###6       |  37% 
+
+
+
+
+
+xz-5.8.2             | 621 KB    | ########## | 100% [A[A[A[A[A[A
+
+
+
+
+
+xz-5.8.2             | 621 KB    | ########## | 100% [A[A[A[A[A[Apython-3.8.16        | 23.9 MB   | #######1   |  71% 
+openssl-3.5.6        | 5.6 MB    | ########## | 100% [A
+openssl-3.5.6        | 5.6 MB    | ########## | 100% [A
+
+
+
+
+
+
+
+wheel-0.44.0         | 108 KB    | ########## | 100% [A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+wheel-0.44.0         | 108 KB    | ########## | 100% [A[A[A[A[A[A[A[Apython-3.8.16        | 23.9 MB   | #########3 |  94% 
+
+
+
+
+
+
+libffi-3.4.8         | 136 KB    | ########## | 100% [A[A[A[A[A[A[A
+
+
+
+
+
+
+libffi-3.4.8         | 136 KB    | ########## | 100% [A[A[A[A[A[A[A
+
+
+setuptools-75.1.0    | 1.7 MB    | ########## | 100% [A[A[A
+
+
+
+
+
+
+
+
+zlib-1.3.1           | 89 KB     | ########## | 100% [A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+zlib-1.3.1           | 89 KB     | ########## | 100% [A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+libzlib-1.3.1        | 59 KB     | ########## | 100% [A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+libzlib-1.3.1        | 59 KB     | ########## | 100% [A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+wheel-0.44.0         | 108 KB    | ########## | 100% [A[A[A[A[A[A[A[Apython-3.8.16        | 23.9 MB   | ########## | 100% 
+
+pip-24.2             | 2.2 MB    | ########## | 100% [A[Apython-3.8.16        | 23.9 MB   | ########## | 100%                                                      
+                                                     [A
+
+                                                     [A[A
+
+
+                                                     [A[A[A
+
+
+
+                                                     [A[A[A[A
+
+
+
+
+                                                     [A[A[A[A[A
+
+
+
+
+
+                                                     [A[A[A[A[A[A
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A[A[A done
+Preparing transaction: - \ done
+Verifying transaction: / - \ | / - \ | / - \ | done
+Executing transaction: - \ | / done
+#
+# To activate this environment, use
+#
+#     $ conda activate /home/satya/conda_envs/selfocc
+#
+# To deactivate an active environment, use
+#
+#     $ conda deactivate
+
+==> Installing CUDA 11.8 toolkit from nvidia channel
+Channels:
+ - nvidia/label/cuda-11.8.0
+ - defaults
+Platform: linux-64
+Collecting package metadata (repodata.json): ...working... done
+Solving environment: ...working... done
+
+
+==> WARNING: A newer version of conda exists. <==
+    current version: 24.11.3
+    latest version: 26.3.2
+
+Please update conda by running
+
+    $ conda update -n base -c defaults conda
+
+
+
+## Package Plan ##
+
+  environment location: /home/satya/conda_envs/selfocc
+
+  added / updated specs:
+    - cuda-toolkit
+
+
+The following packages will be downloaded:
+
+    package                    |            build
+    ---------------------------|-----------------
+    cuda-cccl-11.8.89          |                0         1.2 MB  nvidia/label/cuda-11.8.0
+    cuda-command-line-tools-11.8.0|                0           1 KB  nvidia/label/cuda-11.8.0
+    cuda-compiler-11.8.0       |                0           1 KB  nvidia/label/cuda-11.8.0
+    cuda-cudart-11.8.89        |                0         197 KB  nvidia/label/cuda-11.8.0
+    cuda-cudart-dev-11.8.89    |                0         1.1 MB  nvidia/label/cuda-11.8.0
+    cuda-cuobjdump-11.8.86     |                0         229 KB  nvidia/label/cuda-11.8.0
+    cuda-cupti-11.8.87         |                0        25.3 MB  nvidia/label/cuda-11.8.0
+    cuda-cuxxfilt-11.8.86      |                0         291 KB  nvidia/label/cuda-11.8.0
+    cuda-documentation-11.8.86 |                0          89 KB  nvidia/label/cuda-11.8.0
+    cuda-driver-dev-11.8.89    |                0          16 KB  nvidia/label/cuda-11.8.0
+    cuda-gdb-11.8.86           |                0         4.8 MB  nvidia/label/cuda-11.8.0
+    cuda-libraries-11.8.0      |                0           1 KB  nvidia/label/cuda-11.8.0
+    cuda-libraries-dev-11.8.0  |                0           2 KB  nvidia/label/cuda-11.8.0
+    cuda-memcheck-11.8.86      |                0         168 KB  nvidia/label/cuda-11.8.0
+    cuda-nsight-11.8.86        |                0       113.6 MB  nvidia/label/cuda-11.8.0
+    cuda-nsight-compute-11.8.0 |                0           1 KB  nvidia/label/cuda-11.8.0
+    cuda-nvcc-11.8.89          |                0        50.8 MB  nvidia/label/cuda-11.8.0
+    cuda-nvdisasm-11.8.86      |                0        48.7 MB  nvidia/label/cuda-11.8.0
+    cuda-nvml-dev-11.8.86      |                0          83 KB  nvidia/label/cuda-11.8.0
+    cuda-nvprof-11.8.87        |                0         4.4 MB  nvidia/label/cuda-11.8.0
+    cuda-nvprune-11.8.86       |                0          65 KB  nvidia/label/cuda-11.8.0
+    cuda-nvrtc-11.8.89         |                0        19.1 MB  nvidia/label/cuda-11.8.0
+    cuda-nvrtc-dev-11.8.89     |                0        17.0 MB  nvidia/label/cuda-11.8.0
+    cuda-nvtx-11.8.86          |                0          57 KB  nvidia/label/cuda-11.8.0
+    cuda-nvvp-11.8.87          |                0       114.4 MB  nvidia/label/cuda-11.8.0
+    cuda-profiler-api-11.8.86  |                0          18 KB  nvidia/label/cuda-11.8.0
+    cuda-sanitizer-api-11.8.86 |                0        16.6 MB  nvidia/label/cuda-11.8.0
+    cuda-toolkit-11.8.0        |                0           1 KB  nvidia/label/cuda-11.8.0
+    cuda-tools-11.8.0          |                0           1 KB  nvidia/label/cuda-11.8.0
+    cuda-visual-tools-11.8.0   |                0           1 KB  nvidia/label/cuda-11.8.0
+    gds-tools-1.4.0.31         |                0           2 KB  nvidia/label/cuda-11.8.0
+    libcublas-11.11.3.6        |                0       364.0 MB  nvidia/label/cuda-11.8.0
+    libcublas-dev-11.11.3.6    |                0       394.1 MB  nvidia/label/cuda-11.8.0
+    libcufft-10.9.0.58         |                0       142.8 MB  nvidia/label/cuda-11.8.0
+    libcufft-dev-10.9.0.58     |                0       275.8 MB  nvidia/label/cuda-11.8.0
+    libcufile-1.4.0.31         |                0         548 KB  nvidia/label/cuda-11.8.0
+    libcufile-dev-1.4.0.31     |                0         1.6 MB  nvidia/label/cuda-11.8.0
+    libcurand-10.3.0.86        |                0        53.2 MB  nvidia/label/cuda-11.8.0
+    libcurand-dev-10.3.0.86    |                0        53.7 MB  nvidia/label/cuda-11.8.0
+    libcusolver-11.4.1.48      |                0        96.5 MB  nvidia/label/cuda-11.8.0
+    libcusolver-dev-11.4.1.48  |                0        66.3 MB  nvidia/label/cuda-11.8.0
+    libcusparse-11.7.5.86      |                0       176.3 MB  nvidia/label/cuda-11.8.0
+    libcusparse-dev-11.7.5.86  |                0       359.7 MB  nvidia/label/cuda-11.8.0
+    libnpp-11.8.0.86           |                0       147.8 MB  nvidia/label/cuda-11.8.0
+    libnpp-dev-11.8.0.86       |                0       144.5 MB  nvidia/label/cuda-11.8.0
+    libnvjpeg-11.9.0.86        |                0         2.4 MB  nvidia/label/cuda-11.8.0
+    libnvjpeg-dev-11.9.0.86    |                0         2.1 MB  nvidia/label/cuda-11.8.0
+    nsight-compute-2022.3.0.22 |                0       610.0 MB  nvidia/label/cuda-11.8.0
+    ------------------------------------------------------------
+                                           Total:        3.23 GB
+
+The following NEW packages will be INSTALLED:
+
+  cuda-cccl          nvidia/label/cuda-11.8.0/linux-64::cuda-cccl-11.8.89-0 
+  cuda-command-line~ nvidia/label/cuda-11.8.0/linux-64::cuda-command-line-tools-11.8.0-0 
+  cuda-compiler      nvidia/label/cuda-11.8.0/linux-64::cuda-compiler-11.8.0-0 
+  cuda-cudart        nvidia/label/cuda-11.8.0/linux-64::cuda-cudart-11.8.89-0 
+  cuda-cudart-dev    nvidia/label/cuda-11.8.0/linux-64::cuda-cudart-dev-11.8.89-0 
+  cuda-cuobjdump     nvidia/label/cuda-11.8.0/linux-64::cuda-cuobjdump-11.8.86-0 
+  cuda-cupti         nvidia/label/cuda-11.8.0/linux-64::cuda-cupti-11.8.87-0 
+  cuda-cuxxfilt      nvidia/label/cuda-11.8.0/linux-64::cuda-cuxxfilt-11.8.86-0 
+  cuda-documentation nvidia/label/cuda-11.8.0/linux-64::cuda-documentation-11.8.86-0 
+  cuda-driver-dev    nvidia/label/cuda-11.8.0/linux-64::cuda-driver-dev-11.8.89-0 
+  cuda-gdb           nvidia/label/cuda-11.8.0/linux-64::cuda-gdb-11.8.86-0 
+  cuda-libraries     nvidia/label/cuda-11.8.0/linux-64::cuda-libraries-11.8.0-0 
+  cuda-libraries-dev nvidia/label/cuda-11.8.0/linux-64::cuda-libraries-dev-11.8.0-0 
+  cuda-memcheck      nvidia/label/cuda-11.8.0/linux-64::cuda-memcheck-11.8.86-0 
+  cuda-nsight        nvidia/label/cuda-11.8.0/linux-64::cuda-nsight-11.8.86-0 
+  cuda-nsight-compu~ nvidia/label/cuda-11.8.0/linux-64::cuda-nsight-compute-11.8.0-0 
+  cuda-nvcc          nvidia/label/cuda-11.8.0/linux-64::cuda-nvcc-11.8.89-0 
+  cuda-nvdisasm      nvidia/label/cuda-11.8.0/linux-64::cuda-nvdisasm-11.8.86-0 
+  cuda-nvml-dev      nvidia/label/cuda-11.8.0/linux-64::cuda-nvml-dev-11.8.86-0 
+  cuda-nvprof        nvidia/label/cuda-11.8.0/linux-64::cuda-nvprof-11.8.87-0 
+  cuda-nvprune       nvidia/label/cuda-11.8.0/linux-64::cuda-nvprune-11.8.86-0 
+  cuda-nvrtc         nvidia/label/cuda-11.8.0/linux-64::cuda-nvrtc-11.8.89-0 
+  cuda-nvrtc-dev     nvidia/label/cuda-11.8.0/linux-64::cuda-nvrtc-dev-11.8.89-0 
+  cuda-nvtx          nvidia/label/cuda-11.8.0/linux-64::cuda-nvtx-11.8.86-0 
+  cuda-nvvp          nvidia/label/cuda-11.8.0/linux-64::cuda-nvvp-11.8.87-0 
+  cuda-profiler-api  nvidia/label/cuda-11.8.0/linux-64::cuda-profiler-api-11.8.86-0 
+  cuda-sanitizer-api nvidia/label/cuda-11.8.0/linux-64::cuda-sanitizer-api-11.8.86-0 
+  cuda-toolkit       nvidia/label/cuda-11.8.0/linux-64::cuda-toolkit-11.8.0-0 
+  cuda-tools         nvidia/label/cuda-11.8.0/linux-64::cuda-tools-11.8.0-0 
+  cuda-visual-tools  nvidia/label/cuda-11.8.0/linux-64::cuda-visual-tools-11.8.0-0 
+  gds-tools          nvidia/label/cuda-11.8.0/linux-64::gds-tools-1.4.0.31-0 
+  libcublas          nvidia/label/cuda-11.8.0/linux-64::libcublas-11.11.3.6-0 
+  libcublas-dev      nvidia/label/cuda-11.8.0/linux-64::libcublas-dev-11.11.3.6-0 
+  libcufft           nvidia/label/cuda-11.8.0/linux-64::libcufft-10.9.0.58-0 
+  libcufft-dev       nvidia/label/cuda-11.8.0/linux-64::libcufft-dev-10.9.0.58-0 
+  libcufile          nvidia/label/cuda-11.8.0/linux-64::libcufile-1.4.0.31-0 
+  libcufile-dev      nvidia/label/cuda-11.8.0/linux-64::libcufile-dev-1.4.0.31-0 
+  libcurand          nvidia/label/cuda-11.8.0/linux-64::libcurand-10.3.0.86-0 
+  libcurand-dev      nvidia/label/cuda-11.8.0/linux-64::libcurand-dev-10.3.0.86-0 
+  libcusolver        nvidia/label/cuda-11.8.0/linux-64::libcusolver-11.4.1.48-0 
+  libcusolver-dev    nvidia/label/cuda-11.8.0/linux-64::libcusolver-dev-11.4.1.48-0 
+  libcusparse        nvidia/label/cuda-11.8.0/linux-64::libcusparse-11.7.5.86-0 
+  libcusparse-dev    nvidia/label/cuda-11.8.0/linux-64::libcusparse-dev-11.7.5.86-0 
+  libnpp             nvidia/label/cuda-11.8.0/linux-64::libnpp-11.8.0.86-0 
+  libnpp-dev         nvidia/label/cuda-11.8.0/linux-64::libnpp-dev-11.8.0.86-0 
+  libnvjpeg          nvidia/label/cuda-11.8.0/linux-64::libnvjpeg-11.9.0.86-0 
+  libnvjpeg-dev      nvidia/label/cuda-11.8.0/linux-64::libnvjpeg-dev-11.9.0.86-0 
+  nsight-compute     nvidia/label/cuda-11.8.0/linux-64::nsight-compute-2022.3.0.22-0 
+
+
+
+Downloading and Extracting Packages: ...working...nsight-compute-2022. | 610.0 MB  |            |   0% 
+libcublas-dev-11.11. | 394.1 MB  |            |   0% [A
+
+libcublas-11.11.3.6  | 364.0 MB  |            |   0% [A[A
+
+
+libcusparse-dev-11.7 | 359.7 MB  |            |   0% [A[A[A
+
+
+
+libcufft-dev-10.9.0. | 275.8 MB  |            |   0% [A[A[A[A
+
+
+
+
+libcusparse-11.7.5.8 | 176.3 MB  |            |   0% [A[A[A[A[A
+
+
+
+
+
+libnpp-11.8.0.86     | 147.8 MB  |            |   0% [A[A[A[A[A[A
+
+
+
+
+
+
+libnpp-dev-11.8.0.86 | 144.5 MB  |            |   0% [A[A[A[A[A[A[A
+
+
+
+
+
+
+
+libcufft-10.9.0.58   | 142.8 MB  |            |   0% [A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+cuda-nvvp-11.8.87    | 114.4 MB  |            |   0% [A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+cuda-nsight-11.8.86  | 113.6 MB  |            |   0% [A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+libcusolver-11.4.1.4 | 96.5 MB   |            |   0% [A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+libcusolver-dev-11.4 | 66.3 MB   |            |   0% [A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+libcurand-dev-10.3.0 | 53.7 MB   |            |   0% [A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+libcurand-10.3.0.86  | 53.2 MB   |            |   0% [A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-nvcc-11.8.89    | 50.8 MB   |            |   0% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-nvdisasm-11.8.8 | 48.7 MB   |            |   0% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-cupti-11.8.87   | 25.3 MB   |            |   0% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-nvrtc-11.8.89   | 19.1 MB   |            |   0% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ... (more hidden) ...[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+libcufft-dev-10.9.0. | 275.8 MB  | ########## | 100% [A[A[A[A
+
+
+
+libcufft-dev-10.9.0. | 275.8 MB  | ########## | 100% [A[A[A[A
+
+libcublas-11.11.3.6  | 364.0 MB  | ########## | 100% [A[A
+
+libcublas-11.11.3.6  | 364.0 MB  | ########## | 100% [A[A
+libcublas-dev-11.11. | 394.1 MB  | ########## | 100% [A
+libcublas-dev-11.11. | 394.1 MB  | ########## | 100% [A
+
+
+
+
+libcusparse-11.7.5.8 | 176.3 MB  | ########## | 100% [A[A[A[A[A
+
+
+
+
+libcusparse-11.7.5.8 | 176.3 MB  | ########## | 100% [A[A[A[A[A
+
+
+
+
+
+libnpp-11.8.0.86     | 147.8 MB  | ########## | 100% [A[A[A[A[A[A
+
+
+
+
+
+libnpp-11.8.0.86     | 147.8 MB  | ########## | 100% [A[A[A[A[A[Ansight-compute-2022. | 610.0 MB  | ########## | 100% nsight-compute-2022. | 610.0 MB  | ########## | 100% 
+
+
+
+
+
+
+libnpp-dev-11.8.0.86 | 144.5 MB  | ########## | 100% [A[A[A[A[A[A[A
+
+
+
+
+
+
+libnpp-dev-11.8.0.86 | 144.5 MB  | ########## | 100% [A[A[A[A[A[A[A
+
+
+
+
+
+
+
+libcufft-10.9.0.58   | 142.8 MB  | ########## | 100% [A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+libcufft-10.9.0.58   | 142.8 MB  | ########## | 100% [A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+cuda-nvvp-11.8.87    | 114.4 MB  | ########## | 100% [A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+cuda-nvvp-11.8.87    | 114.4 MB  | ########## | 100% [A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+cuda-nsight-11.8.86  | 113.6 MB  | ########## | 100% [A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+cuda-nsight-11.8.86  | 113.6 MB  | ########## | 100% [A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+libcusolver-dev-11.4 | 66.3 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+libcusolver-dev-11.4 | 66.3 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+libcusolver-11.4.1.4 | 96.5 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+libcusolver-11.4.1.4 | 96.5 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+libcurand-10.3.0.86  | 53.2 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+libcurand-10.3.0.86  | 53.2 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+libcurand-dev-10.3.0 | 53.7 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+libcurand-dev-10.3.0 | 53.7 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-nvcc-11.8.89    | 50.8 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-nvcc-11.8.89    | 50.8 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-cupti-11.8.87   | 25.3 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-cupti-11.8.87   | 25.3 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ... (more hidden) ...[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ... (more hidden) ...[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-nvrtc-11.8.89   | 19.1 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-nvrtc-11.8.89   | 19.1 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-nvdisasm-11.8.8 | 48.7 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-nvdisasm-11.8.8 | 48.7 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+libcufft-dev-10.9.0. | 275.8 MB  | ########## | 100% [A[A[A[A
+
+
+libcusparse-dev-11.7 | 359.7 MB  | ########## | 100% [A[A[A
+
+
+libcusparse-dev-11.7 | 359.7 MB  | ########## | 100% [A[A[A
+
+libcublas-11.11.3.6  | 364.0 MB  | ########## | 100% [A[A
+
+
+
+
+libcusparse-11.7.5.8 | 176.3 MB  | ########## | 100% [A[A[A[A[A
+libcublas-dev-11.11. | 394.1 MB  | ########## | 100% [A
+
+
+
+
+
+libnpp-11.8.0.86     | 147.8 MB  | ########## | 100% [A[A[A[A[A[A
+
+
+
+
+
+
+libnpp-dev-11.8.0.86 | 144.5 MB  | ########## | 100% [A[A[A[A[A[A[A
+
+
+
+
+
+
+
+libcufft-10.9.0.58   | 142.8 MB  | ########## | 100% [A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+cuda-nvvp-11.8.87    | 114.4 MB  | ########## | 100% [A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+cuda-nsight-11.8.86  | 113.6 MB  | ########## | 100% [A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+libcusolver-dev-11.4 | 66.3 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+libcurand-10.3.0.86  | 53.2 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+libcusolver-11.4.1.4 | 96.5 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+libcurand-dev-10.3.0 | 53.7 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[Ansight-compute-2022. | 610.0 MB  | ########## | 100% 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-cupti-11.8.87   | 25.3 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-nvcc-11.8.89    | 50.8 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ... (more hidden) ...[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-nvrtc-11.8.89   | 19.1 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cuda-nvdisasm-11.8.8 | 48.7 MB   | ########## | 100% [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+libcusparse-dev-11.7 | 359.7 MB  | ########## | 100% [A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                      [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A                                                     
+                                                     [A
+
+                                                     [A[A
+
+
+                                                     [A[A[A
+
+
+
+                                                     [A[A[A[A
+
+
+
+
+                                                     [A[A[A[A[A
+
+
+
+
+
+                                                     [A[A[A[A[A[A
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                     [A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+[A
+
+[A[A
+
+
+[A[A[A
+
+
+
+[A[A[A[A
+
+
+
+
+[A[A[A[A[A
+
+
+
+
+
+[A[A[A[A[A[A
+
+
+
+
+
+
+[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A[A
+[A
+
+[A[A
+
+
+[A[A[A
+
+
+
+[A[A[A[A
+
+
+
+
+[A[A[A[A[A
+
+
+
+
+
+[A[A[A[A[A[A
+
+
+
+
+
+
+[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A
+
+
+
+
+
+
+
+
+[A[A[A[A[A[A[A[A[A done
+Preparing transaction: - done
+Verifying transaction: | / - \ | / done
+Executing transaction: \ | done
+==> nvcc in use:   /home/satya/conda_envs/selfocc/bin/nvcc
+Cuda compilation tools, release 11.8, V11.8.89
+Build cuda_11.8.r11.8/compiler.31833905_0
+==> Installing PyTorch 2.0.0+cu118
+Looking in indexes: https://download.pytorch.org/whl/cu118
+Collecting torch==2.0.0
+  Downloading https://download-r2.pytorch.org/whl/cu118/torch-2.0.0%2Bcu118-cp38-cp38-linux_x86_64.whl (2267.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.3/2.3 GB 99.7 MB/s eta 0:00:00
+Collecting torchvision==0.15.1
+  Downloading https://download-r2.pytorch.org/whl/cu118/torchvision-0.15.1%2Bcu118-cp38-cp38-linux_x86_64.whl (33.9 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 33.9/33.9 MB 114.9 MB/s eta 0:00:00
+Collecting torchaudio==2.0.1
+  Downloading https://download-r2.pytorch.org/whl/cu118/torchaudio-2.0.1%2Bcu118-cp38-cp38-linux_x86_64.whl (4.4 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.4/4.4 MB 58.9 MB/s eta 0:00:00
+Collecting filelock (from torch==2.0.0)
+  Downloading filelock-3.16.1-py3-none-any.whl.metadata (2.9 kB)
+Collecting typing-extensions (from torch==2.0.0)
+  Downloading https://download.pytorch.org/whl/typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting sympy (from torch==2.0.0)
+  Downloading sympy-1.13.3-py3-none-any.whl.metadata (12 kB)
+Collecting networkx (from torch==2.0.0)
+  Downloading networkx-3.1-py3-none-any.whl.metadata (5.3 kB)
+Collecting jinja2 (from torch==2.0.0)
+  Downloading https://download.pytorch.org/whl/jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting triton==2.0.0 (from torch==2.0.0)
+  Downloading https://download-r2.pytorch.org/whl/triton-2.0.0-1-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (63.2 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 63.2/63.2 MB 115.6 MB/s eta 0:00:00
+Collecting numpy (from torchvision==0.15.1)
+  Downloading numpy-1.24.4-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.6 kB)
+Collecting requests (from torchvision==0.15.1)
+  Downloading https://download.pytorch.org/whl/requests-2.28.1-py3-none-any.whl (62 kB)
+Collecting pillow!=8.3.*,>=5.3.0 (from torchvision==0.15.1)
+  Downloading pillow-10.4.0-cp38-cp38-manylinux_2_28_x86_64.whl.metadata (9.2 kB)
+Collecting cmake (from triton==2.0.0->torch==2.0.0)
+  Downloading https://download.pytorch.org/whl/cmake-3.25.0-py2.py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (23.7 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 23.7/23.7 MB 118.5 MB/s eta 0:00:00
+Collecting lit (from triton==2.0.0->torch==2.0.0)
+  Downloading https://download.pytorch.org/whl/lit-15.0.7.tar.gz (132 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting MarkupSafe>=2.0 (from jinja2->torch==2.0.0)
+  Downloading https://download.pytorch.org/whl/MarkupSafe-2.1.5-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (26 kB)
+Collecting charset-normalizer<3,>=2 (from requests->torchvision==0.15.1)
+  Downloading https://download.pytorch.org/whl/charset_normalizer-2.1.1-py3-none-any.whl (39 kB)
+Collecting idna<4,>=2.5 (from requests->torchvision==0.15.1)
+  Downloading https://download.pytorch.org/whl/idna-3.4-py3-none-any.whl (61 kB)
+Collecting urllib3<1.27,>=1.21.1 (from requests->torchvision==0.15.1)
+  Downloading https://download.pytorch.org/whl/urllib3-1.26.13-py2.py3-none-any.whl (140 kB)
+Collecting certifi>=2017.4.17 (from requests->torchvision==0.15.1)
+  Downloading https://download.pytorch.org/whl/certifi-2022.12.7-py3-none-any.whl (155 kB)
+Collecting mpmath<1.4,>=1.1.0 (from sympy->torch==2.0.0)
+  Downloading mpmath-1.3.0-py3-none-any.whl.metadata (8.6 kB)
+INFO: pip is looking at multiple versions of typing-extensions to determine which version is compatible with other requirements. This could take a while.
+Collecting typing-extensions (from torch==2.0.0)
+  Downloading https://download.pytorch.org/whl/typing_extensions-4.14.0-py3-none-any.whl.metadata (3.0 kB)
+  Downloading https://download.pytorch.org/whl/typing_extensions-4.12.2-py3-none-any.whl.metadata (3.0 kB)
+Downloading pillow-10.4.0-cp38-cp38-manylinux_2_28_x86_64.whl (4.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 47.8 MB/s eta 0:00:00
+Downloading filelock-3.16.1-py3-none-any.whl (16 kB)
+Downloading https://download.pytorch.org/whl/jinja2-3.1.6-py3-none-any.whl (134 kB)
+Downloading networkx-3.1-py3-none-any.whl (2.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 48.0 MB/s eta 0:00:00
+Downloading numpy-1.24.4-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (17.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 17.3/17.3 MB 54.0 MB/s eta 0:00:00
+Downloading sympy-1.13.3-py3-none-any.whl (6.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.2/6.2 MB 49.5 MB/s eta 0:00:00
+Downloading https://download.pytorch.org/whl/typing_extensions-4.12.2-py3-none-any.whl (37 kB)
+Downloading mpmath-1.3.0-py3-none-any.whl (536 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 536.2/536.2 kB 65.8 MB/s eta 0:00:00
+Building wheels for collected packages: lit
+  Building wheel for lit (setup.py): started
+  Building wheel for lit (setup.py): finished with status 'done'
+  Created wheel for lit: filename=lit-15.0.7-py3-none-any.whl size=89991 sha256=d189fb0d7fbc040a416b9b2de30e99e6f760c83ee546a57e9502fb13cac7889d
+  Stored in directory: /tmp/pip-ephem-wheel-cache-0ivd2x9m/wheels/c2/69/d7/7667467c9aee50773790fbdf876e4a2f25452d85e821f8af8d
+Successfully built lit
+Installing collected packages: mpmath, lit, cmake, urllib3, typing-extensions, sympy, pillow, numpy, networkx, MarkupSafe, idna, filelock, charset-normalizer, certifi, requests, jinja2, triton, torch, torchvision, torchaudio
+Successfully installed MarkupSafe-2.1.5 certifi-2022.12.7 charset-normalizer-2.1.1 cmake-3.25.0 filelock-3.16.1 idna-3.4 jinja2-3.1.6 lit-15.0.7 mpmath-1.3.0 networkx-3.1 numpy-1.24.4 pillow-10.4.0 requests-2.28.1 sympy-1.13.3 torch-2.0.0+cu118 torchaudio-2.0.1+cu118 torchvision-0.15.1+cu118 triton-2.0.0 typing-extensions-4.12.2 urllib3-1.26.13
+==> Installing MMLab packages via openmim
+Collecting openmim
+  Downloading openmim-0.3.9-py2.py3-none-any.whl.metadata (16 kB)
+Collecting Click (from openmim)
+  Using cached click-8.1.8-py3-none-any.whl.metadata (2.3 kB)
+Collecting colorama (from openmim)
+  Using cached colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+Collecting model-index (from openmim)
+  Downloading model_index-0.1.11-py3-none-any.whl.metadata (3.9 kB)
+Collecting opendatalab (from openmim)
+  Downloading opendatalab-0.0.10-py3-none-any.whl.metadata (6.4 kB)
+Collecting pandas (from openmim)
+  Downloading pandas-2.0.3-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (18 kB)
+Requirement already satisfied: pip>=19.3 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from openmim) (24.2)
+Requirement already satisfied: requests in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from openmim) (2.28.1)
+Collecting rich (from openmim)
+  Downloading rich-14.3.4-py3-none-any.whl.metadata (18 kB)
+Collecting tabulate (from openmim)
+  Using cached tabulate-0.9.0-py3-none-any.whl.metadata (34 kB)
+Collecting pyyaml (from model-index->openmim)
+  Downloading PyYAML-6.0.3-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.1 kB)
+Collecting markdown (from model-index->openmim)
+  Downloading Markdown-3.7-py3-none-any.whl.metadata (7.0 kB)
+Collecting ordered-set (from model-index->openmim)
+  Downloading ordered_set-4.1.0-py3-none-any.whl.metadata (5.3 kB)
+Collecting pycryptodome (from opendatalab->openmim)
+  Downloading pycryptodome-3.23.0-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (3.4 kB)
+Collecting tqdm (from opendatalab->openmim)
+  Using cached tqdm-4.67.3-py3-none-any.whl.metadata (57 kB)
+Collecting openxlab (from opendatalab->openmim)
+  Downloading openxlab-0.1.3-py3-none-any.whl.metadata (3.8 kB)
+Requirement already satisfied: charset-normalizer<3,>=2 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from requests->openmim) (2.1.1)
+Requirement already satisfied: idna<4,>=2.5 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from requests->openmim) (3.4)
+Requirement already satisfied: urllib3<1.27,>=1.21.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from requests->openmim) (1.26.13)
+Requirement already satisfied: certifi>=2017.4.17 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from requests->openmim) (2022.12.7)
+Collecting python-dateutil>=2.8.2 (from pandas->openmim)
+  Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting pytz>=2020.1 (from pandas->openmim)
+  Downloading pytz-2026.2-py2.py3-none-any.whl.metadata (22 kB)
+Collecting tzdata>=2022.1 (from pandas->openmim)
+  Downloading tzdata-2026.2-py2.py3-none-any.whl.metadata (1.4 kB)
+Requirement already satisfied: numpy>=1.20.3 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from pandas->openmim) (1.24.4)
+Collecting markdown-it-py>=2.2.0 (from rich->openmim)
+  Downloading markdown_it_py-3.0.0-py3-none-any.whl.metadata (6.9 kB)
+Collecting pygments<3.0.0,>=2.13.0 (from rich->openmim)
+  Using cached pygments-2.19.2-py3-none-any.whl.metadata (2.5 kB)
+Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich->openmim)
+  Using cached mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+Collecting six>=1.5 (from python-dateutil>=2.8.2->pandas->openmim)
+  Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Collecting importlib-metadata>=4.4 (from markdown->model-index->openmim)
+  Downloading importlib_metadata-8.5.0-py3-none-any.whl.metadata (4.8 kB)
+Collecting filelock~=3.14.0 (from openxlab->opendatalab->openmim)
+  Downloading filelock-3.14.0-py3-none-any.whl.metadata (2.8 kB)
+Collecting oss2~=2.17.0 (from openxlab->opendatalab->openmim)
+  Downloading oss2-2.17.0.tar.gz (259 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting packaging~=24.0 (from openxlab->opendatalab->openmim)
+  Downloading packaging-24.2-py3-none-any.whl.metadata (3.2 kB)
+Collecting pytz>=2020.1 (from pandas->openmim)
+  Downloading pytz-2023.4-py2.py3-none-any.whl.metadata (22 kB)
+Collecting requests (from openmim)
+  Downloading requests-2.28.2-py3-none-any.whl.metadata (4.6 kB)
+Collecting rich (from openmim)
+  Downloading rich-13.4.2-py3-none-any.whl.metadata (18 kB)
+Collecting setuptools~=60.2.0 (from openxlab->opendatalab->openmim)
+  Downloading setuptools-60.2.0-py3-none-any.whl.metadata (5.1 kB)
+Collecting tqdm (from opendatalab->openmim)
+  Downloading tqdm-4.65.2-py3-none-any.whl.metadata (56 kB)
+Requirement already satisfied: typing-extensions<5.0,>=4.0.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from rich->openmim) (4.12.2)
+Collecting zipp>=3.20 (from importlib-metadata>=4.4->markdown->model-index->openmim)
+  Downloading zipp-3.20.2-py3-none-any.whl.metadata (3.7 kB)
+Collecting crcmod>=1.7 (from oss2~=2.17.0->openxlab->opendatalab->openmim)
+  Downloading crcmod-1.7.tar.gz (89 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting aliyun-python-sdk-kms>=2.4.1 (from oss2~=2.17.0->openxlab->opendatalab->openmim)
+  Downloading aliyun_python_sdk_kms-2.16.5-py2.py3-none-any.whl.metadata (1.5 kB)
+Collecting aliyun-python-sdk-core>=2.13.12 (from oss2~=2.17.0->openxlab->opendatalab->openmim)
+  Downloading aliyun-python-sdk-core-2.16.0.tar.gz (449 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting jmespath<1.0.0,>=0.9.3 (from aliyun-python-sdk-core>=2.13.12->oss2~=2.17.0->openxlab->opendatalab->openmim)
+  Downloading jmespath-0.10.0-py2.py3-none-any.whl.metadata (8.0 kB)
+Collecting cryptography>=3.0.0 (from aliyun-python-sdk-core>=2.13.12->oss2~=2.17.0->openxlab->opendatalab->openmim)
+  Downloading cryptography-47.0.0-cp38-abi3-manylinux_2_34_x86_64.whl.metadata (4.5 kB)
+Collecting cffi>=1.14 (from cryptography>=3.0.0->aliyun-python-sdk-core>=2.13.12->oss2~=2.17.0->openxlab->opendatalab->openmim)
+  Downloading cffi-1.17.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (1.5 kB)
+Collecting typing-extensions<5.0,>=4.0.0 (from rich->openmim)
+  Downloading typing_extensions-4.13.2-py3-none-any.whl.metadata (3.0 kB)
+Collecting pycparser (from cffi>=1.14->cryptography>=3.0.0->aliyun-python-sdk-core>=2.13.12->oss2~=2.17.0->openxlab->opendatalab->openmim)
+  Downloading pycparser-2.23-py3-none-any.whl.metadata (993 bytes)
+Downloading openmim-0.3.9-py2.py3-none-any.whl (52 kB)
+Using cached click-8.1.8-py3-none-any.whl (98 kB)
+Using cached colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+Downloading model_index-0.1.11-py3-none-any.whl (34 kB)
+Downloading opendatalab-0.0.10-py3-none-any.whl (29 kB)
+Downloading pandas-2.0.3-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (12.4 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.4/12.4 MB 50.4 MB/s eta 0:00:00
+Using cached tabulate-0.9.0-py3-none-any.whl (35 kB)
+Downloading markdown_it_py-3.0.0-py3-none-any.whl (87 kB)
+Using cached pygments-2.19.2-py3-none-any.whl (1.2 MB)
+Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Downloading tzdata-2026.2-py2.py3-none-any.whl (349 kB)
+Downloading Markdown-3.7-py3-none-any.whl (106 kB)
+Downloading openxlab-0.1.3-py3-none-any.whl (314 kB)
+Downloading requests-2.28.2-py3-none-any.whl (62 kB)
+Downloading rich-13.4.2-py3-none-any.whl (239 kB)
+Downloading pytz-2023.4-py2.py3-none-any.whl (506 kB)
+Downloading PyYAML-6.0.3-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (806 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 806.0/806.0 kB 26.5 MB/s eta 0:00:00
+Downloading tqdm-4.65.2-py3-none-any.whl (77 kB)
+Downloading ordered_set-4.1.0-py3-none-any.whl (7.6 kB)
+Downloading pycryptodome-3.23.0-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.3/2.3 MB 39.6 MB/s eta 0:00:00
+Downloading filelock-3.14.0-py3-none-any.whl (12 kB)
+Downloading importlib_metadata-8.5.0-py3-none-any.whl (26 kB)
+Using cached mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+Downloading packaging-24.2-py3-none-any.whl (65 kB)
+Downloading setuptools-60.2.0-py3-none-any.whl (953 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 953.1/953.1 kB 30.3 MB/s eta 0:00:00
+Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+Downloading aliyun_python_sdk_kms-2.16.5-py2.py3-none-any.whl (99 kB)
+Downloading zipp-3.20.2-py3-none-any.whl (9.2 kB)
+Downloading cryptography-47.0.0-cp38-abi3-manylinux_2_34_x86_64.whl (4.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.7/4.7 MB 40.7 MB/s eta 0:00:00
+Downloading typing_extensions-4.13.2-py3-none-any.whl (45 kB)
+Downloading jmespath-0.10.0-py2.py3-none-any.whl (24 kB)
+Downloading cffi-1.17.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (446 kB)
+Downloading pycparser-2.23-py3-none-any.whl (118 kB)
+Building wheels for collected packages: oss2, aliyun-python-sdk-core, crcmod
+  Building wheel for oss2 (setup.py): started
+  Building wheel for oss2 (setup.py): finished with status 'done'
+  Created wheel for oss2: filename=oss2-2.17.0-py3-none-any.whl size=112372 sha256=8bbf91c35ba6b0478e663804b6860206c673585f465bab373fbbc4ffbb9ad28b
+  Stored in directory: /home/satya/.cache/pip/wheels/84/f1/a7/a20c3f53c7dbd8a1e5aa17ab1759465203b4ee46d6b3994dd2
+  Building wheel for aliyun-python-sdk-core (setup.py): started
+  Building wheel for aliyun-python-sdk-core (setup.py): finished with status 'done'
+  Created wheel for aliyun-python-sdk-core: filename=aliyun_python_sdk_core-2.16.0-py3-none-any.whl size=535316 sha256=6367c63bbf5888c3503d9a65c1e37813d379194bff073a6d0f3980b4abf93029
+  Stored in directory: /home/satya/.cache/pip/wheels/b2/49/69/4ff7cddf922bb14b3cd172290d83582ec72051d43333e70b69
+  Building wheel for crcmod (setup.py): started
+  Building wheel for crcmod (setup.py): finished with status 'done'
+  Created wheel for crcmod: filename=crcmod-1.7-cp38-cp38-linux_x86_64.whl size=31044 sha256=1002f9389859df558d08016c416b4b68202d5b88779b9a4631f4a4ab10c882b5
+  Stored in directory: /home/satya/.cache/pip/wheels/ca/5a/02/f3acf982a026f3319fb3e798a8dca2d48fafee7761788562e9
+Successfully built oss2 aliyun-python-sdk-core crcmod
+Installing collected packages: pytz, crcmod, zipp, tzdata, typing-extensions, tqdm, tabulate, six, setuptools, requests, pyyaml, pygments, pycryptodome, pycparser, packaging, ordered-set, mdurl, jmespath, filelock, colorama, Click, python-dateutil, markdown-it-py, importlib-metadata, cffi, rich, pandas, markdown, cryptography, model-index, aliyun-python-sdk-core, aliyun-python-sdk-kms, oss2, openxlab, opendatalab, openmim
+  Attempting uninstall: typing-extensions
+    Found existing installation: typing_extensions 4.12.2
+    Uninstalling typing_extensions-4.12.2:
+      Successfully uninstalled typing_extensions-4.12.2
+  Attempting uninstall: setuptools
+    Found existing installation: setuptools 75.1.0
+    Uninstalling setuptools-75.1.0:
+      Successfully uninstalled setuptools-75.1.0
+  Attempting uninstall: requests
+    Found existing installation: requests 2.28.1
+    Uninstalling requests-2.28.1:
+      Successfully uninstalled requests-2.28.1
+  Attempting uninstall: filelock
+    Found existing installation: filelock 3.16.1
+    Uninstalling filelock-3.16.1:
+      Successfully uninstalled filelock-3.16.1
+Successfully installed Click-8.1.8 aliyun-python-sdk-core-2.16.0 aliyun-python-sdk-kms-2.16.5 cffi-1.17.1 colorama-0.4.6 crcmod-1.7 cryptography-47.0.0 filelock-3.14.0 importlib-metadata-8.5.0 jmespath-0.10.0 markdown-3.7 markdown-it-py-3.0.0 mdurl-0.1.2 model-index-0.1.11 opendatalab-0.0.10 openmim-0.3.9 openxlab-0.1.3 ordered-set-4.1.0 oss2-2.17.0 packaging-24.2 pandas-2.0.3 pycparser-2.23 pycryptodome-3.23.0 pygments-2.19.2 python-dateutil-2.9.0.post0 pytz-2023.4 pyyaml-6.0.3 requests-2.28.2 rich-13.4.2 setuptools-60.2.0 six-1.17.0 tabulate-0.9.0 tqdm-4.65.2 typing-extensions-4.13.2 tzdata-2026.2 zipp-3.20.2
+Looking in links: https://download.openmmlab.com/mmcv/dist/cu118/torch2.0.0/index.html
+Collecting mmcv==2.0.1
+  Downloading https://download.openmmlab.com/mmcv/dist/cu118/torch2.0.0/mmcv-2.0.1-cp38-cp38-manylinux1_x86_64.whl (74.4 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 74.4/74.4 MB 20.5 MB/s eta 0:00:00
+Collecting addict (from mmcv==2.0.1)
+  Using cached addict-2.4.0-py3-none-any.whl.metadata (1.0 kB)
+Collecting mmengine>=0.3.0 (from mmcv==2.0.1)
+  Downloading mmengine-0.10.7-py3-none-any.whl.metadata (20 kB)
+Requirement already satisfied: numpy in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmcv==2.0.1) (1.24.4)
+Requirement already satisfied: packaging in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmcv==2.0.1) (24.2)
+Requirement already satisfied: Pillow in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmcv==2.0.1) (10.4.0)
+Requirement already satisfied: pyyaml in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmcv==2.0.1) (6.0.3)
+Collecting yapf (from mmcv==2.0.1)
+  Downloading yapf-0.43.0-py3-none-any.whl.metadata (46 kB)
+Collecting opencv-python>=3 (from mmcv==2.0.1)
+  Downloading opencv_python-4.13.0.92-cp37-abi3-manylinux_2_28_x86_64.whl.metadata (19 kB)
+Collecting matplotlib (from mmengine>=0.3.0->mmcv==2.0.1)
+  Downloading matplotlib-3.7.5-cp38-cp38-manylinux_2_12_x86_64.manylinux2010_x86_64.whl.metadata (5.7 kB)
+Requirement already satisfied: rich in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmengine>=0.3.0->mmcv==2.0.1) (13.4.2)
+Collecting termcolor (from mmengine>=0.3.0->mmcv==2.0.1)
+  Downloading termcolor-2.4.0-py3-none-any.whl.metadata (6.1 kB)
+Collecting platformdirs>=3.5.1 (from yapf->mmcv==2.0.1)
+  Downloading platformdirs-4.3.6-py3-none-any.whl.metadata (11 kB)
+Collecting tomli>=2.0.1 (from yapf->mmcv==2.0.1)
+  Downloading tomli-2.4.1-py3-none-any.whl.metadata (10 kB)
+Collecting contourpy>=1.0.1 (from matplotlib->mmengine>=0.3.0->mmcv==2.0.1)
+  Downloading contourpy-1.1.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.9 kB)
+Collecting cycler>=0.10 (from matplotlib->mmengine>=0.3.0->mmcv==2.0.1)
+  Using cached cycler-0.12.1-py3-none-any.whl.metadata (3.8 kB)
+Collecting fonttools>=4.22.0 (from matplotlib->mmengine>=0.3.0->mmcv==2.0.1)
+  Downloading fonttools-4.57.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (102 kB)
+Collecting kiwisolver>=1.0.1 (from matplotlib->mmengine>=0.3.0->mmcv==2.0.1)
+  Downloading kiwisolver-1.4.7-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl.metadata (6.3 kB)
+Collecting pyparsing>=2.3.1 (from matplotlib->mmengine>=0.3.0->mmcv==2.0.1)
+  Downloading pyparsing-3.1.4-py3-none-any.whl.metadata (5.1 kB)
+Requirement already satisfied: python-dateutil>=2.7 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmengine>=0.3.0->mmcv==2.0.1) (2.9.0.post0)
+Collecting importlib-resources>=3.2.0 (from matplotlib->mmengine>=0.3.0->mmcv==2.0.1)
+  Downloading importlib_resources-6.4.5-py3-none-any.whl.metadata (4.0 kB)
+Requirement already satisfied: markdown-it-py>=2.2.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from rich->mmengine>=0.3.0->mmcv==2.0.1) (3.0.0)
+Requirement already satisfied: pygments<3.0.0,>=2.13.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from rich->mmengine>=0.3.0->mmcv==2.0.1) (2.19.2)
+Requirement already satisfied: typing-extensions<5.0,>=4.0.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from rich->mmengine>=0.3.0->mmcv==2.0.1) (4.13.2)
+Requirement already satisfied: zipp>=3.1.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from importlib-resources>=3.2.0->matplotlib->mmengine>=0.3.0->mmcv==2.0.1) (3.20.2)
+Requirement already satisfied: mdurl~=0.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from markdown-it-py>=2.2.0->rich->mmengine>=0.3.0->mmcv==2.0.1) (0.1.2)
+Requirement already satisfied: six>=1.5 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from python-dateutil>=2.7->matplotlib->mmengine>=0.3.0->mmcv==2.0.1) (1.17.0)
+Downloading mmengine-0.10.7-py3-none-any.whl (452 kB)
+Downloading opencv_python-4.13.0.92-cp37-abi3-manylinux_2_28_x86_64.whl (72.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 72.9/72.9 MB 46.6 MB/s eta 0:00:00
+Using cached addict-2.4.0-py3-none-any.whl (3.8 kB)
+Downloading yapf-0.43.0-py3-none-any.whl (256 kB)
+Downloading platformdirs-4.3.6-py3-none-any.whl (18 kB)
+Downloading tomli-2.4.1-py3-none-any.whl (14 kB)
+Downloading matplotlib-3.7.5-cp38-cp38-manylinux_2_12_x86_64.manylinux2010_x86_64.whl (9.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 9.2/9.2 MB 41.1 MB/s eta 0:00:00
+Downloading termcolor-2.4.0-py3-none-any.whl (7.7 kB)
+Downloading contourpy-1.1.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (301 kB)
+Using cached cycler-0.12.1-py3-none-any.whl (8.3 kB)
+Downloading fonttools-4.57.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (4.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.7/4.7 MB 38.8 MB/s eta 0:00:00
+Downloading importlib_resources-6.4.5-py3-none-any.whl (36 kB)
+Downloading kiwisolver-1.4.7-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl (1.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 32.5 MB/s eta 0:00:00
+Downloading pyparsing-3.1.4-py3-none-any.whl (104 kB)
+Installing collected packages: addict, tomli, termcolor, pyparsing, platformdirs, opencv-python, kiwisolver, importlib-resources, fonttools, cycler, contourpy, yapf, matplotlib, mmengine, mmcv
+Successfully installed addict-2.4.0 contourpy-1.1.1 cycler-0.12.1 fonttools-4.57.0 importlib-resources-6.4.5 kiwisolver-1.4.7 matplotlib-3.7.5 mmcv-2.0.1 mmengine-0.10.7 opencv-python-4.13.0.92 platformdirs-4.3.6 pyparsing-3.1.4 termcolor-2.4.0 tomli-2.4.1 yapf-0.43.0
+Looking in links: https://download.openmmlab.com/mmcv/dist/cu118/torch2.0.0/index.html
+Collecting mmdet==3.0.0
+  Downloading mmdet-3.0.0-py3-none-any.whl.metadata (26 kB)
+Ignoring mmcv: markers 'extra == "mim"' don't match your environment
+Ignoring mmengine: markers 'extra == "mim"' don't match your environment
+Requirement already satisfied: matplotlib in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmdet==3.0.0) (3.7.5)
+Requirement already satisfied: numpy in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmdet==3.0.0) (1.24.4)
+Collecting pycocotools (from mmdet==3.0.0)
+  Downloading pycocotools-2.0.7-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (1.1 kB)
+Collecting scipy (from mmdet==3.0.0)
+  Downloading scipy-1.10.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (58 kB)
+Collecting shapely (from mmdet==3.0.0)
+  Downloading shapely-2.0.7-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.9 kB)
+Requirement already satisfied: six in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmdet==3.0.0) (1.17.0)
+Collecting terminaltables (from mmdet==3.0.0)
+  Downloading terminaltables-3.1.10-py2.py3-none-any.whl.metadata (3.5 kB)
+Requirement already satisfied: contourpy>=1.0.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmdet==3.0.0) (1.1.1)
+Requirement already satisfied: cycler>=0.10 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmdet==3.0.0) (0.12.1)
+Requirement already satisfied: fonttools>=4.22.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmdet==3.0.0) (4.57.0)
+Requirement already satisfied: kiwisolver>=1.0.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmdet==3.0.0) (1.4.7)
+Requirement already satisfied: packaging>=20.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmdet==3.0.0) (24.2)
+Requirement already satisfied: pillow>=6.2.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmdet==3.0.0) (10.4.0)
+Requirement already satisfied: pyparsing>=2.3.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmdet==3.0.0) (3.1.4)
+Requirement already satisfied: python-dateutil>=2.7 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmdet==3.0.0) (2.9.0.post0)
+Requirement already satisfied: importlib-resources>=3.2.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmdet==3.0.0) (6.4.5)
+Requirement already satisfied: zipp>=3.1.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from importlib-resources>=3.2.0->matplotlib->mmdet==3.0.0) (3.20.2)
+Downloading mmdet-3.0.0-py3-none-any.whl (1.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.7/1.7 MB 42.3 MB/s eta 0:00:00
+Downloading pycocotools-2.0.7-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (439 kB)
+Downloading scipy-1.10.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (34.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 34.5/34.5 MB 43.1 MB/s eta 0:00:00
+Downloading shapely-2.0.7-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.5/2.5 MB 44.6 MB/s eta 0:00:00
+Downloading terminaltables-3.1.10-py2.py3-none-any.whl (15 kB)
+Installing collected packages: terminaltables, shapely, scipy, pycocotools, mmdet
+Successfully installed mmdet-3.0.0 pycocotools-2.0.7 scipy-1.10.1 shapely-2.0.7 terminaltables-3.1.10
+Looking in links: https://download.openmmlab.com/mmcv/dist/cu118/torch2.0.0/index.html
+Collecting mmsegmentation==1.0.0
+  Downloading mmsegmentation-1.0.0-py3-none-any.whl.metadata (17 kB)
+Ignoring mmcv: markers 'extra == "mim"' don't match your environment
+Ignoring mmengine: markers 'extra == "mim"' don't match your environment
+Requirement already satisfied: matplotlib in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmsegmentation==1.0.0) (3.7.5)
+Requirement already satisfied: numpy in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmsegmentation==1.0.0) (1.24.4)
+Requirement already satisfied: packaging in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmsegmentation==1.0.0) (24.2)
+Collecting prettytable (from mmsegmentation==1.0.0)
+  Downloading prettytable-3.11.0-py3-none-any.whl.metadata (30 kB)
+Requirement already satisfied: scipy in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmsegmentation==1.0.0) (1.10.1)
+Requirement already satisfied: contourpy>=1.0.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmsegmentation==1.0.0) (1.1.1)
+Requirement already satisfied: cycler>=0.10 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmsegmentation==1.0.0) (0.12.1)
+Requirement already satisfied: fonttools>=4.22.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmsegmentation==1.0.0) (4.57.0)
+Requirement already satisfied: kiwisolver>=1.0.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmsegmentation==1.0.0) (1.4.7)
+Requirement already satisfied: pillow>=6.2.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmsegmentation==1.0.0) (10.4.0)
+Requirement already satisfied: pyparsing>=2.3.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmsegmentation==1.0.0) (3.1.4)
+Requirement already satisfied: python-dateutil>=2.7 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmsegmentation==1.0.0) (2.9.0.post0)
+Requirement already satisfied: importlib-resources>=3.2.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->mmsegmentation==1.0.0) (6.4.5)
+Collecting wcwidth (from prettytable->mmsegmentation==1.0.0)
+  Downloading wcwidth-0.7.0-py3-none-any.whl.metadata (36 kB)
+Requirement already satisfied: zipp>=3.1.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from importlib-resources>=3.2.0->matplotlib->mmsegmentation==1.0.0) (3.20.2)
+Requirement already satisfied: six>=1.5 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from python-dateutil>=2.7->matplotlib->mmsegmentation==1.0.0) (1.17.0)
+Downloading mmsegmentation-1.0.0-py3-none-any.whl (903 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 903.4/903.4 kB 2.5 MB/s eta 0:00:00
+Downloading prettytable-3.11.0-py3-none-any.whl (28 kB)
+Downloading wcwidth-0.7.0-py3-none-any.whl (110 kB)
+Installing collected packages: wcwidth, prettytable, mmsegmentation
+Successfully installed mmsegmentation-1.0.0 prettytable-3.11.0 wcwidth-0.7.0
+Collecting Cython
+  Downloading cython-3.2.4-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (7.3 kB)
+Downloading cython-3.2.4-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (3.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.5/3.5 MB 36.7 MB/s eta 0:00:00
+Installing collected packages: Cython
+Successfully installed Cython-3.2.4
+Collecting scikit-image==0.21.0
+  Downloading scikit_image-0.21.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (14 kB)
+Requirement already satisfied: numpy>=1.21.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from scikit-image==0.21.0) (1.24.4)
+Requirement already satisfied: scipy>=1.8 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from scikit-image==0.21.0) (1.10.1)
+Requirement already satisfied: networkx>=2.8 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from scikit-image==0.21.0) (3.1)
+Requirement already satisfied: pillow>=9.0.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from scikit-image==0.21.0) (10.4.0)
+Collecting imageio>=2.27 (from scikit-image==0.21.0)
+  Downloading imageio-2.35.1-py3-none-any.whl.metadata (4.9 kB)
+Collecting tifffile>=2022.8.12 (from scikit-image==0.21.0)
+  Downloading tifffile-2023.7.10-py3-none-any.whl.metadata (31 kB)
+Collecting PyWavelets>=1.1.1 (from scikit-image==0.21.0)
+  Downloading PyWavelets-1.4.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (1.9 kB)
+Requirement already satisfied: packaging>=21 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from scikit-image==0.21.0) (24.2)
+Collecting lazy_loader>=0.2 (from scikit-image==0.21.0)
+  Downloading lazy_loader-0.4-py3-none-any.whl.metadata (7.6 kB)
+Downloading scikit_image-0.21.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (13.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13.9/13.9 MB 42.9 MB/s eta 0:00:00
+Downloading imageio-2.35.1-py3-none-any.whl (315 kB)
+Downloading lazy_loader-0.4-py3-none-any.whl (12 kB)
+Downloading PyWavelets-1.4.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (6.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.9/6.9 MB 42.5 MB/s eta 0:00:00
+Downloading tifffile-2023.7.10-py3-none-any.whl (220 kB)
+Installing collected packages: tifffile, PyWavelets, lazy_loader, imageio, scikit-image
+Successfully installed PyWavelets-1.4.1 imageio-2.35.1 lazy_loader-0.4 scikit-image-0.21.0 tifffile-2023.7.10
+Looking in links: https://download.openmmlab.com/mmcv/dist/cu118/torch2.0.0/index.html
+Collecting mmdet3d==1.1.1
+  Downloading mmdet3d-1.1.1-py3-none-any.whl.metadata (22 kB)
+Ignoring mmcv: markers 'extra == "mim"' don't match your environment
+Ignoring mmdet: markers 'extra == "mim"' don't match your environment
+Ignoring mmengine: markers 'extra == "mim"' don't match your environment
+Collecting lyft-dataset-sdk (from mmdet3d==1.1.1)
+  Downloading lyft_dataset_sdk-0.0.8-py2.py3-none-any.whl.metadata (3.6 kB)
+Requirement already satisfied: networkx>=2.5 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmdet3d==1.1.1) (3.1)
+Collecting numba (from mmdet3d==1.1.1)
+  Downloading numba-0.58.1-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.7 kB)
+Requirement already satisfied: numpy in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmdet3d==1.1.1) (1.24.4)
+Collecting nuscenes-devkit (from mmdet3d==1.1.1)
+  Downloading nuscenes_devkit-1.1.11-py3-none-any.whl.metadata (15 kB)
+Collecting open3d (from mmdet3d==1.1.1)
+  Downloading open3d-0.19.0-cp38-cp38-manylinux_2_31_x86_64.whl.metadata (4.3 kB)
+Collecting plyfile (from mmdet3d==1.1.1)
+  Downloading plyfile-1.0.3-py3-none-any.whl.metadata (2.1 kB)
+Requirement already satisfied: scikit-image in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from mmdet3d==1.1.1) (0.21.0)
+Collecting tensorboard (from mmdet3d==1.1.1)
+  Downloading tensorboard-2.14.0-py3-none-any.whl.metadata (1.8 kB)
+Collecting trimesh (from mmdet3d==1.1.1)
+  Downloading trimesh-4.12.2-py3-none-any.whl.metadata (13 kB)
+Collecting flake8 (from lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading flake8-7.1.2-py2.py3-none-any.whl.metadata (3.8 kB)
+Requirement already satisfied: opencv-python>=3.4.2.17 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from lyft-dataset-sdk->mmdet3d==1.1.1) (4.13.0.92)
+Requirement already satisfied: Pillow>=5.2.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from lyft-dataset-sdk->mmdet3d==1.1.1) (10.4.0)
+Collecting pyquaternion>=0.9.5 (from lyft-dataset-sdk->mmdet3d==1.1.1)
+  Using cached pyquaternion-0.9.9-py3-none-any.whl.metadata (1.4 kB)
+Collecting scikit-learn>=0.19.2 (from lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading scikit_learn-1.3.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
+Requirement already satisfied: tqdm>=4.25.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from lyft-dataset-sdk->mmdet3d==1.1.1) (4.65.2)
+Requirement already satisfied: scipy>=1.1.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from lyft-dataset-sdk->mmdet3d==1.1.1) (1.10.1)
+Collecting cachetools>=3.1.0 (from lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading cachetools-5.5.2-py3-none-any.whl.metadata (5.4 kB)
+Requirement already satisfied: Shapely>=1.6.4.post2 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from lyft-dataset-sdk->mmdet3d==1.1.1) (2.0.7)
+Collecting fire (from lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading fire-0.7.1-py3-none-any.whl.metadata (5.8 kB)
+Collecting pytest (from lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading pytest-8.3.5-py3-none-any.whl.metadata (7.6 kB)
+Collecting black (from lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading black-24.8.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl.metadata (78 kB)
+Requirement already satisfied: matplotlib in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from lyft-dataset-sdk->mmdet3d==1.1.1) (3.7.5)
+Requirement already satisfied: pandas in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from lyft-dataset-sdk->mmdet3d==1.1.1) (2.0.3)
+Collecting plotly (from lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading plotly-6.7.0-py3-none-any.whl.metadata (8.6 kB)
+Collecting llvmlite<0.42,>=0.41.0dev0 (from numba->mmdet3d==1.1.1)
+  Downloading llvmlite-0.41.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.8 kB)
+Requirement already satisfied: importlib-metadata in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from numba->mmdet3d==1.1.1) (8.5.0)
+Collecting descartes (from nuscenes-devkit->mmdet3d==1.1.1)
+  Downloading descartes-1.1.0-py3-none-any.whl.metadata (2.4 kB)
+Collecting matplotlib (from lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading matplotlib-3.5.3-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl.metadata (6.7 kB)
+Collecting Shapely>=1.6.4.post2 (from lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading Shapely-1.8.5.post1-cp38-cp38-manylinux_2_12_x86_64.manylinux2010_x86_64.whl.metadata (43 kB)
+Requirement already satisfied: pycocotools>=2.0.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from nuscenes-devkit->mmdet3d==1.1.1) (2.0.7)
+Collecting dash>=2.6.0 (from open3d->mmdet3d==1.1.1)
+  Downloading dash-4.1.0-py3-none-any.whl.metadata (11 kB)
+Collecting werkzeug>=3.0.0 (from open3d->mmdet3d==1.1.1)
+  Downloading werkzeug-3.0.6-py3-none-any.whl.metadata (3.7 kB)
+Collecting flask>=3.0.0 (from open3d->mmdet3d==1.1.1)
+  Downloading flask-3.0.3-py3-none-any.whl.metadata (3.2 kB)
+Collecting nbformat>=5.7.0 (from open3d->mmdet3d==1.1.1)
+  Using cached nbformat-5.10.4-py3-none-any.whl.metadata (3.6 kB)
+Collecting configargparse (from open3d->mmdet3d==1.1.1)
+  Downloading configargparse-1.7.5-py3-none-any.whl.metadata (23 kB)
+Collecting ipywidgets>=8.0.4 (from open3d->mmdet3d==1.1.1)
+  Using cached ipywidgets-8.1.8-py3-none-any.whl.metadata (2.4 kB)
+Requirement already satisfied: addict in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from open3d->mmdet3d==1.1.1) (2.4.0)
+Requirement already satisfied: pyyaml>=5.4.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from open3d->mmdet3d==1.1.1) (6.0.3)
+Requirement already satisfied: imageio>=2.27 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from scikit-image->mmdet3d==1.1.1) (2.35.1)
+Requirement already satisfied: tifffile>=2022.8.12 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from scikit-image->mmdet3d==1.1.1) (2023.7.10)
+Requirement already satisfied: PyWavelets>=1.1.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from scikit-image->mmdet3d==1.1.1) (1.4.1)
+Requirement already satisfied: packaging>=21 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from scikit-image->mmdet3d==1.1.1) (24.2)
+Requirement already satisfied: lazy_loader>=0.2 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from scikit-image->mmdet3d==1.1.1) (0.4)
+Collecting absl-py>=0.4 (from tensorboard->mmdet3d==1.1.1)
+  Downloading absl_py-2.3.1-py3-none-any.whl.metadata (3.3 kB)
+Collecting grpcio>=1.48.2 (from tensorboard->mmdet3d==1.1.1)
+  Downloading grpcio-1.70.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (3.9 kB)
+Collecting google-auth<3,>=1.6.3 (from tensorboard->mmdet3d==1.1.1)
+  Downloading google_auth-2.50.0-py3-none-any.whl.metadata (6.2 kB)
+Collecting google-auth-oauthlib<1.1,>=0.5 (from tensorboard->mmdet3d==1.1.1)
+  Downloading google_auth_oauthlib-1.0.0-py2.py3-none-any.whl.metadata (2.7 kB)
+Requirement already satisfied: markdown>=2.6.8 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from tensorboard->mmdet3d==1.1.1) (3.7)
+Collecting protobuf>=3.19.6 (from tensorboard->mmdet3d==1.1.1)
+  Downloading protobuf-5.29.6-cp38-abi3-manylinux2014_x86_64.whl.metadata (592 bytes)
+Requirement already satisfied: requests<3,>=2.21.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from tensorboard->mmdet3d==1.1.1) (2.28.2)
+Requirement already satisfied: setuptools>=41.0.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from tensorboard->mmdet3d==1.1.1) (60.2.0)
+Collecting tensorboard-data-server<0.8.0,>=0.7.0 (from tensorboard->mmdet3d==1.1.1)
+  Downloading tensorboard_data_server-0.7.2-py3-none-manylinux_2_31_x86_64.whl.metadata (1.1 kB)
+Requirement already satisfied: wheel>=0.26 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from tensorboard->mmdet3d==1.1.1) (0.44.0)
+Requirement already satisfied: typing_extensions>=4.1.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from dash>=2.6.0->open3d->mmdet3d==1.1.1) (4.13.2)
+Collecting retrying (from dash>=2.6.0->open3d->mmdet3d==1.1.1)
+  Using cached retrying-1.4.2-py3-none-any.whl.metadata (5.5 kB)
+Collecting nest-asyncio (from dash>=2.6.0->open3d->mmdet3d==1.1.1)
+  Using cached nest_asyncio-1.6.0-py3-none-any.whl.metadata (2.8 kB)
+Requirement already satisfied: Jinja2>=3.1.2 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from flask>=3.0.0->open3d->mmdet3d==1.1.1) (3.1.6)
+Collecting itsdangerous>=2.1.2 (from flask>=3.0.0->open3d->mmdet3d==1.1.1)
+  Using cached itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)
+Requirement already satisfied: click>=8.1.3 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from flask>=3.0.0->open3d->mmdet3d==1.1.1) (8.1.8)
+Collecting blinker>=1.6.2 (from flask>=3.0.0->open3d->mmdet3d==1.1.1)
+  Downloading blinker-1.8.2-py3-none-any.whl.metadata (1.6 kB)
+Collecting pyasn1-modules>=0.2.1 (from google-auth<3,>=1.6.3->tensorboard->mmdet3d==1.1.1)
+  Downloading pyasn1_modules-0.4.2-py3-none-any.whl.metadata (3.5 kB)
+Requirement already satisfied: cryptography>=38.0.3 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from google-auth<3,>=1.6.3->tensorboard->mmdet3d==1.1.1) (47.0.0)
+Collecting requests-oauthlib>=0.7.0 (from google-auth-oauthlib<1.1,>=0.5->tensorboard->mmdet3d==1.1.1)
+  Downloading requests_oauthlib-2.0.0-py2.py3-none-any.whl.metadata (11 kB)
+Requirement already satisfied: zipp>=3.20 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from importlib-metadata->numba->mmdet3d==1.1.1) (3.20.2)
+Collecting comm>=0.1.3 (from ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached comm-0.2.3-py3-none-any.whl.metadata (3.7 kB)
+Collecting ipython>=6.1.0 (from ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Downloading ipython-8.12.3-py3-none-any.whl.metadata (5.7 kB)
+Collecting traitlets>=4.3.1 (from ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached traitlets-5.14.3-py3-none-any.whl.metadata (10 kB)
+Collecting widgetsnbextension~=4.0.14 (from ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached widgetsnbextension-4.0.15-py3-none-any.whl.metadata (1.6 kB)
+Collecting jupyterlab_widgets~=3.0.15 (from ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached jupyterlab_widgets-3.0.16-py3-none-any.whl.metadata (20 kB)
+Requirement already satisfied: cycler>=0.10 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->lyft-dataset-sdk->mmdet3d==1.1.1) (0.12.1)
+Requirement already satisfied: fonttools>=4.22.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->lyft-dataset-sdk->mmdet3d==1.1.1) (4.57.0)
+Requirement already satisfied: kiwisolver>=1.0.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->lyft-dataset-sdk->mmdet3d==1.1.1) (1.4.7)
+Requirement already satisfied: pyparsing>=2.2.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->lyft-dataset-sdk->mmdet3d==1.1.1) (3.1.4)
+Requirement already satisfied: python-dateutil>=2.7 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from matplotlib->lyft-dataset-sdk->mmdet3d==1.1.1) (2.9.0.post0)
+Collecting fastjsonschema>=2.15 (from nbformat>=5.7.0->open3d->mmdet3d==1.1.1)
+  Using cached fastjsonschema-2.21.2-py3-none-any.whl.metadata (2.3 kB)
+Collecting jsonschema>=2.6 (from nbformat>=5.7.0->open3d->mmdet3d==1.1.1)
+  Downloading jsonschema-4.23.0-py3-none-any.whl.metadata (7.9 kB)
+Collecting jupyter-core!=5.0.*,>=4.12 (from nbformat>=5.7.0->open3d->mmdet3d==1.1.1)
+  Using cached jupyter_core-5.8.1-py3-none-any.whl.metadata (1.6 kB)
+Requirement already satisfied: pytz>=2020.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from pandas->lyft-dataset-sdk->mmdet3d==1.1.1) (2023.4)
+Requirement already satisfied: tzdata>=2022.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from pandas->lyft-dataset-sdk->mmdet3d==1.1.1) (2026.2)
+Collecting narwhals>=1.15.1 (from plotly->lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading narwhals-1.42.1-py3-none-any.whl.metadata (11 kB)
+Requirement already satisfied: charset-normalizer<4,>=2 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from requests<3,>=2.21.0->tensorboard->mmdet3d==1.1.1) (2.1.1)
+Requirement already satisfied: idna<4,>=2.5 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from requests<3,>=2.21.0->tensorboard->mmdet3d==1.1.1) (3.4)
+Requirement already satisfied: urllib3<1.27,>=1.21.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from requests<3,>=2.21.0->tensorboard->mmdet3d==1.1.1) (1.26.13)
+Requirement already satisfied: certifi>=2017.4.17 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from requests<3,>=2.21.0->tensorboard->mmdet3d==1.1.1) (2022.12.7)
+Collecting joblib>=1.1.1 (from scikit-learn>=0.19.2->lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading joblib-1.4.2-py3-none-any.whl.metadata (5.4 kB)
+Collecting threadpoolctl>=2.0.0 (from scikit-learn>=0.19.2->lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading threadpoolctl-3.5.0-py3-none-any.whl.metadata (13 kB)
+Requirement already satisfied: MarkupSafe>=2.1.1 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from werkzeug>=3.0.0->open3d->mmdet3d==1.1.1) (2.1.5)
+Collecting mypy-extensions>=0.4.3 (from black->lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading mypy_extensions-1.1.0-py3-none-any.whl.metadata (1.1 kB)
+Collecting pathspec>=0.9.0 (from black->lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading pathspec-0.12.1-py3-none-any.whl.metadata (21 kB)
+Requirement already satisfied: platformdirs>=2 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from black->lyft-dataset-sdk->mmdet3d==1.1.1) (4.3.6)
+Requirement already satisfied: tomli>=1.1.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from black->lyft-dataset-sdk->mmdet3d==1.1.1) (2.4.1)
+Requirement already satisfied: termcolor in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from fire->lyft-dataset-sdk->mmdet3d==1.1.1) (2.4.0)
+Collecting mccabe<0.8.0,>=0.7.0 (from flake8->lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading mccabe-0.7.0-py2.py3-none-any.whl.metadata (5.0 kB)
+Collecting pycodestyle<2.13.0,>=2.12.0 (from flake8->lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading pycodestyle-2.12.1-py2.py3-none-any.whl.metadata (4.5 kB)
+Collecting pyflakes<3.3.0,>=3.2.0 (from flake8->lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading pyflakes-3.2.0-py2.py3-none-any.whl.metadata (3.5 kB)
+Collecting exceptiongroup>=1.0.0rc8 (from pytest->lyft-dataset-sdk->mmdet3d==1.1.1)
+  Using cached exceptiongroup-1.3.1-py3-none-any.whl.metadata (6.7 kB)
+Collecting iniconfig (from pytest->lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading iniconfig-2.1.0-py3-none-any.whl.metadata (2.7 kB)
+Collecting pluggy<2,>=1.5 (from pytest->lyft-dataset-sdk->mmdet3d==1.1.1)
+  Downloading pluggy-1.5.0-py3-none-any.whl.metadata (4.8 kB)
+Requirement already satisfied: cffi>=1.14 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from cryptography>=38.0.3->google-auth<3,>=1.6.3->tensorboard->mmdet3d==1.1.1) (1.17.1)
+Collecting backcall (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Downloading backcall-0.2.0-py2.py3-none-any.whl.metadata (2.0 kB)
+Collecting decorator (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached decorator-5.2.1-py3-none-any.whl.metadata (3.9 kB)
+Collecting jedi>=0.16 (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached jedi-0.19.2-py2.py3-none-any.whl.metadata (22 kB)
+Collecting matplotlib-inline (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Downloading matplotlib_inline-0.1.7-py3-none-any.whl.metadata (3.9 kB)
+Collecting pickleshare (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Downloading pickleshare-0.7.5-py2.py3-none-any.whl.metadata (1.5 kB)
+Collecting prompt-toolkit!=3.0.37,<3.1.0,>=3.0.30 (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached prompt_toolkit-3.0.52-py3-none-any.whl.metadata (6.4 kB)
+Requirement already satisfied: pygments>=2.4.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1) (2.19.2)
+Collecting stack-data (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached stack_data-0.6.3-py3-none-any.whl.metadata (18 kB)
+Collecting pexpect>4.3 (from ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached pexpect-4.9.0-py2.py3-none-any.whl.metadata (2.5 kB)
+Collecting attrs>=22.2.0 (from jsonschema>=2.6->nbformat>=5.7.0->open3d->mmdet3d==1.1.1)
+  Downloading attrs-25.3.0-py3-none-any.whl.metadata (10 kB)
+Requirement already satisfied: importlib-resources>=1.4.0 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from jsonschema>=2.6->nbformat>=5.7.0->open3d->mmdet3d==1.1.1) (6.4.5)
+Collecting jsonschema-specifications>=2023.03.6 (from jsonschema>=2.6->nbformat>=5.7.0->open3d->mmdet3d==1.1.1)
+  Downloading jsonschema_specifications-2023.12.1-py3-none-any.whl.metadata (3.0 kB)
+Collecting pkgutil-resolve-name>=1.3.10 (from jsonschema>=2.6->nbformat>=5.7.0->open3d->mmdet3d==1.1.1)
+  Downloading pkgutil_resolve_name-1.3.10-py3-none-any.whl.metadata (624 bytes)
+Collecting referencing>=0.28.4 (from jsonschema>=2.6->nbformat>=5.7.0->open3d->mmdet3d==1.1.1)
+  Downloading referencing-0.35.1-py3-none-any.whl.metadata (2.8 kB)
+Collecting rpds-py>=0.7.1 (from jsonschema>=2.6->nbformat>=5.7.0->open3d->mmdet3d==1.1.1)
+  Downloading rpds_py-0.20.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.2 kB)
+Collecting pyasn1<0.7.0,>=0.6.1 (from pyasn1-modules>=0.2.1->google-auth<3,>=1.6.3->tensorboard->mmdet3d==1.1.1)
+  Downloading pyasn1-0.6.3-py3-none-any.whl.metadata (8.4 kB)
+Requirement already satisfied: six>=1.5 in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from python-dateutil>=2.7->matplotlib->lyft-dataset-sdk->mmdet3d==1.1.1) (1.17.0)
+Collecting oauthlib>=3.0.0 (from requests-oauthlib>=0.7.0->google-auth-oauthlib<1.1,>=0.5->tensorboard->mmdet3d==1.1.1)
+  Downloading oauthlib-3.3.1-py3-none-any.whl.metadata (7.9 kB)
+Requirement already satisfied: pycparser in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from cffi>=1.14->cryptography>=38.0.3->google-auth<3,>=1.6.3->tensorboard->mmdet3d==1.1.1) (2.23)
+Collecting parso<0.9.0,>=0.8.4 (from jedi>=0.16->ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Downloading parso-0.8.7-py2.py3-none-any.whl.metadata (8.2 kB)
+Collecting ptyprocess>=0.5 (from pexpect>4.3->ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached ptyprocess-0.7.0-py2.py3-none-any.whl.metadata (1.3 kB)
+Requirement already satisfied: wcwidth in /home/satya/conda_envs/selfocc/lib/python3.8/site-packages (from prompt-toolkit!=3.0.37,<3.1.0,>=3.0.30->ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1) (0.7.0)
+Collecting executing>=1.2.0 (from stack-data->ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached executing-2.2.1-py2.py3-none-any.whl.metadata (8.9 kB)
+Collecting asttokens>=2.1.0 (from stack-data->ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached asttokens-3.0.1-py3-none-any.whl.metadata (4.9 kB)
+Collecting pure-eval (from stack-data->ipython>=6.1.0->ipywidgets>=8.0.4->open3d->mmdet3d==1.1.1)
+  Using cached pure_eval-0.2.3-py3-none-any.whl.metadata (6.3 kB)
+Downloading mmdet3d-1.1.1-py3-none-any.whl (1.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.0/1.0 MB 22.2 MB/s eta 0:00:00
+Downloading lyft_dataset_sdk-0.0.8-py2.py3-none-any.whl (32 kB)
+Downloading numba-0.58.1-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (3.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.7/3.7 MB 37.2 MB/s eta 0:00:00
+Downloading nuscenes_devkit-1.1.11-py3-none-any.whl (313 kB)
+Downloading open3d-0.19.0-cp38-cp38-manylinux_2_31_x86_64.whl (447.7 MB)

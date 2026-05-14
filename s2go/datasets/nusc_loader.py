@@ -53,7 +53,7 @@ class NuScenesLoader(Dataset):
     """Yields T-frame mini-sequences. __getitem__ returns a list of T dicts."""
 
     def __init__(self,
-                 dataroot: str = "/media/skr/storage/self_driving/S2GO/data/nuscenes",
+                 dataroot: str = "/home/satya/skr/S2GO/S2GO/data/nuscenes",
                  version: str = "v1.0-trainval",
                  T: int = 4,
                  image_size=(256, 704),
