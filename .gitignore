@@ -53,6 +53,9 @@ out/
 # --- Paper PDFs (excluded for size + licensing; see arxiv links in docs) ---
 *.pdf
 
+# --- aria2c download progress markers ---
+*.pid
+
 # --- Editor / OS noise ---
 *.swp
 *~
