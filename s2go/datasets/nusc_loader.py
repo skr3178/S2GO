@@ -58,23 +58,46 @@ class NuScenesLoader(Dataset):
                  T: int = 4,
                  image_size=(256, 704),
                  max_lidar_points: int = 35_000,
+                 scene_tokens=None,
+                 scene_tokens_json: str = None,
                  verbose: bool = False):
+        """
+        scene_tokens / scene_tokens_json: optional whitelist of scene tokens to
+            include. If given, only samples whose scene_token is in this set
+            contribute T-keyframe sequences. Either pass a Python iterable
+            (`scene_tokens`) or a path to a JSON file containing a list of
+            tokens (`scene_tokens_json`). The two are mutually exclusive.
+        """
         self.dataroot = dataroot
         self.T = T
         self.image_h, self.image_w = image_size
         self.max_lidar_points = max_lidar_points
         self.nusc = NuScenes(version=version, dataroot=dataroot, verbose=False)
 
+        if scene_tokens is not None and scene_tokens_json is not None:
+            raise ValueError("pass at most one of scene_tokens / scene_tokens_json")
+        if scene_tokens_json is not None:
+            import json as _json
+            with open(scene_tokens_json, 'r') as f:
+                scene_tokens = _json.load(f)
+        self._scene_whitelist = set(scene_tokens) if scene_tokens is not None else None
+
         # Find sample tokens that begin a T-keyframe contiguous run within the
         # same scene AND whose every sensor file is on disk (Part-1 has only
-        # ~15% of trainval extracted).
+        # ~15% of trainval extracted). If a scene_token whitelist is provided,
+        # only samples whose scene is in the whitelist contribute.
         self.start_tokens: List[str] = []
         for sample in self.nusc.sample:
+            if self._scene_whitelist is not None and \
+               sample['scene_token'] not in self._scene_whitelist:
+                continue
             if not self._sequence_exists(sample['token']):
                 continue
             self.start_tokens.append(sample['token'])
         if verbose:
-            print(f"NuScenesLoader: {len(self.start_tokens)} usable T={T}-frame sequences")
+            extra = f" (whitelist={len(self._scene_whitelist)} scenes)" \
+                    if self._scene_whitelist is not None else ""
+            print(f"NuScenesLoader: {len(self.start_tokens)} usable T={T}-frame sequences{extra}")
 
     # ─────────────────────────────────────────────────────────────────────
     def _all_files_present(self, sample) -> bool:

@@ -315,7 +315,9 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
          save_best_cooldown: int = 100,
          grad_accum_steps: int = 1,
          eval_every: int = 0,
-         eval_seqs=(0, 100, 5000, 20000)):
+         eval_seqs=(0, 100, 5000, 20000),
+         train_tokens_json: str = None,
+         val_tokens_json: str = None):
     assert not (denoise_only and depth_only), \
         "--denoise-only and --depth-only are mutually exclusive"
     # Denoise-only convenience: overrides
@@ -340,10 +342,40 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
     torch.manual_seed(0)
     torch.cuda.empty_cache()
 
-    loader = NuScenesLoader(T=t_seq, verbose=False)
+    loader = NuScenesLoader(
+        T=t_seq,
+        scene_tokens_json=train_tokens_json,
+        verbose=False,
+    )
     n_dataset = len(loader)
     if limit_data is not None and limit_data > 0:
         n_dataset = min(n_dataset, int(limit_data))
+    if train_tokens_json:
+        print(f"    [train scope] curated tokens from {train_tokens_json} → "
+              f"{n_dataset} T={t_seq} sequences")
+    # Separate val loader if a curated val token list is provided. The periodic
+    # eval pass (below, gated on --eval-every > 0) iterates val_loader indices
+    # 0..len(eval_seqs)-1 instead of pulling from the train loader by index.
+    val_loader = None
+    if val_tokens_json:
+        val_loader = NuScenesLoader(
+            T=t_seq,
+            scene_tokens_json=val_tokens_json,
+            verbose=False,
+        )
+        # Guard: train ∩ val must be empty at the sequence level.
+        train_start = set(loader.start_tokens)
+        val_start = set(val_loader.start_tokens)
+        overlap = len(train_start & val_start)
+        print(f"    [val scope] curated tokens from {val_tokens_json} → "
+              f"{len(val_loader)} T={t_seq} sequences "
+              f"(train∩val={overlap}, expected 0)")
+        if overlap > 0:
+            raise RuntimeError(
+                f"train ∩ val overlap = {overlap} sequences — refusing to run. "
+                "Check that train_tokens_json and val_tokens_json reference "
+                "disjoint scene sets."
+            )
 
     if full_data:
         epochs_implied = n_iters / max(n_dataset, 1)
@@ -723,9 +755,17 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
             seg_was_training = seg.training
             backbone.eval(); seg.eval()
             all_nn = []
+            # If a separate val_loader is configured, pull eval sequences from
+            # it (curated val pool); otherwise fall back to indexing the train
+            # loader (legacy behaviour for old overfit / smoke-test runs).
+            eval_loader = val_loader if val_loader is not None else loader
+            # When val_loader is set, eval_seqs is interpreted as indices into
+            # val_loader (which is usually 50-500 long). Clip to valid range.
+            n_eval = len(eval_loader)
+            effective_eval_seqs = [idx % n_eval for idx in eval_seqs]
             with torch.no_grad():
-                for ev_idx in eval_seqs:
-                    ev_seq_cpu = loader[ev_idx]
+                for ev_idx in effective_eval_seqs:
+                    ev_seq_cpu = eval_loader[ev_idx]
                     ev_seq = [to_device(f, device) for f in ev_seq_cpu]
                     ev_seq_feat = []
                     for f_ev in ev_seq:
@@ -955,7 +995,19 @@ if __name__ == "__main__":
                     default=[0, 100, 5000, 20000],
                     help="loader sequence indices used for periodic eval. "
                          "Default [0, 100, 5000, 20000] matches the overnight "
-                         "eval set for direct comparison.")
+                         "eval set for direct comparison. When --val-tokens-json "
+                         "is set, these indices are into the val_loader instead "
+                         "of the train loader, and are mod-len'd to fit.")
+    p.add_argument("--train-tokens-json", type=str, default=None,
+                    help="optional JSON with a list of scene tokens to restrict "
+                         "training to (e.g. dataset_stats/curated_train_270/tokens.json). "
+                         "Filters at scene-level inside the loader's start-token scan.")
+    p.add_argument("--val-tokens-json", type=str, default=None,
+                    help="optional JSON with a list of scene tokens used to build "
+                         "a SEPARATE val NuScenesLoader. When set, the periodic "
+                         "eval pass (gated on --eval-every) draws sequences from "
+                         "this val_loader instead of the train loader. "
+                         "Refuses to start if train ∩ val sequences overlap.")
     a = p.parse_args()
 
     # ── Resolve recipe defaults ────────────────────────────────────────────
@@ -1004,4 +1056,6 @@ if __name__ == "__main__":
          save_best_cooldown=a.save_best_cooldown,
          grad_accum_steps=a.grad_accum_steps,
          eval_every=a.eval_every,
-         eval_seqs=tuple(a.eval_seqs))
+         eval_seqs=tuple(a.eval_seqs),
+         train_tokens_json=a.train_tokens_json,
+         val_tokens_json=a.val_tokens_json)
