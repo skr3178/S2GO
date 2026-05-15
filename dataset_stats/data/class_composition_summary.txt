@@ -1,0 +1,21 @@
+=== Global per-class totals (across all 850 scenes) ===
+cls name                   source          total scenes_with_cls mean_per_scene>0
+  1 barrier          thing(boxes)        152,087             370            411.0
+  2 bicycle          thing(boxes)         11,859             348             34.1
+  3 bus              thing(boxes)         16,321             383             42.6
+  4 car              thing(boxes)        494,009             847            583.2
+  5 const_veh        thing(boxes)         14,671             297             49.4
+  6 motorcycle       thing(boxes)         12,617             350             36.0
+  7 pedestrian       thing(boxes)        222,164             780            284.8
+  8 traffic_cone     thing(boxes)         97,959             565            173.4
+  9 trailer          thing(boxes)         24,860             268             92.8
+ 10 truck            thing(boxes)         88,519             699            126.6
+ 11 drive_surf      stuff(voxels)    313,795,541             850         369171.2
+ 12 other_flat      stuff(voxels)      9,782,837             536          18251.6
+ 13 sidewalk        stuff(voxels)    101,812,468             846         120345.7
+ 14 terrain         stuff(voxels)    139,401,848             785         177582.0
+ 15 manmade         stuff(voxels)    330,226,220             850         388501.4
+ 16 vegetation      stuff(voxels)    346,624,309             837         414127.0
+
+Thing counts are 3D box instance counts (one row per box across the scene).
+Stuff counts are voxel counts summed across all lidar keyframes in the scene.

@@ -18,6 +18,13 @@ data/
 nuscenes/
 BaiduPCS-Go-v4.0.1-linux-amd64/
 
+# Exception: curation-pipeline inputs/outputs live under dataset_stats/data/.
+# These are small CSVs/JSONs (<500 KB total) and are needed to reproduce
+# the curated train/val splits without re-running the full analysis from
+# the raw nuScenes images + SurroundOcc voxel GT (~140 GB download).
+!dataset_stats/data/
+!dataset_stats/data/**
+
 # Kernel exploration / large diff blobs (vendored 3rd-party + scratch)
 # Exception: kernel/localagg_s2go/ is the S2GO-authored CUDA kernel that
 # Stage-2 imports at runtime — track it explicitly. See bottom of file for
