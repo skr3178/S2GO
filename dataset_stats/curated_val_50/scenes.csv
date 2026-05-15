@@ -1,0 +1,51 @@
+pick_order,scene_token,name,part,location,vehicle,num_samples,anchor_for,description
+0,afd73f70ff7d46d6b772d341c08e31a5,scene-0100,1,boston-seaport,n008,40,bicycle,Wait at red light; oncoming cyclist; peds; parked bicycle; parked construction car
+1,0e7ede02718341558414865d5c604745,scene-0559,6,boston-seaport,n008,41,const_veh,Passing intersection; pedestrian; parked cars; construction zone; construction vehicles
+2,325cef682f064c55a255f2625c533b75,scene-0916,9,singapore-queenstown,n015,41,motorcycle,Parking lot; bicycle rack; parked bicycles; bus; many peds; parked scooters; parked motorcycle
+3,16e50a63b809463099cb4c378fe0641e,scene-0552,6,boston-seaport,n008,41,bus,Bendy bus; school bus; parking lot; turn left; parked bus; overtake truck
+4,9d1307e95c524ca4a51e03087bd57c29,scene-0331,4,boston-seaport,n008,39,trailer,Heavy truck; container; turn left
+5,9f1f69646d644e35be4fe0122a8b91ef,scene-0269,3,singapore-onenorth,n015,40,bicycle,Parked bicycles; peds sitting outside the restaurant; parked scooter
+6,55b3a17359014f398b6bbd90e94a8e1b,scene-0913,9,boston-seaport,n008,40,barrier,Rain; parked cars; semi trailers; barriers; construction vehicle; parking lot; parked buses
+7,04219bfdc9004ba2af16d3079ecc4353,scene-0922,9,singapore-queenstown,n015,41,bus,Buses; peds
+8,d7bacba9119840f78f3c804134ceece0,scene-0523,5,boston-seaport,n008,40,trailer,Oncoming bus; parked car on center divider; pedestrian; roundabout; parked trucks
+9,fcc020250f884397965ba00c1d9ad9e6,scene-0345,4,singapore-onenorth,n015,39,traffic_cone,Cross the intersection; construction; scooter; turn right; parked buses; navigated through traffic cones
+10,01452fbfbf4543af8acdfd3e8a1ee806,scene-0101,1,boston-seaport,n008,40,traffic_cone,Concrete mixer spinning; traffic cones; wait at red light; move onto bridge; lane change
+11,bed67ef03c4a4066a74f6c0117d512ee,scene-0106,2,boston-seaport,n008,40,barrier,Drive between buildings under construction; slow down at intersection; several traffic cones and temporary barriers
+12,4efbf4c0b77f467385fc2e19da45c989,scene-0963,9,singapore-onenorth,n015,40,const_veh,Motorcycle; wait at intersection; cones; cars; bus
+13,aacd6706a091407fb1b0e5343d27da7e,scene-0969,9,singapore-onenorth,n015,40,motorcycle,Cones; cars; many peds; changing lane; parking lot; parked cars; parked motorcycles
+14,a7d073bc435b4356a0a9a5ebfb61f229,scene-0910,9,boston-seaport,n008,40,,Rain; parked cars; sign trailer; construction; construction vehicle; crane; cones; truck; ped with umbrella; cross intersection; bicycle; peds crossing crosswalk; bicyclist; potential jaywalkers
+15,d29527ec841045d18d04a933e7a0afd2,scene-1069,10,singapore-hollandvillage,n015,40,,Night; truck; congestion; parked bicycle
+16,c164a8e8e8b8489f964f711f472789be,scene-0904,9,boston-seaport,n008,41,,Rain; parked cars; bus; peds; barriers; cross intersection; ped crossing crosswalk; construction site; cones; scooter; arrive at intersection
+17,a2b005c4dd654af48194ada18662c8ca,scene-0914,9,boston-seaport,n008,41,,Rain; parking lot; bicycle rack; buses; jaywalker; parked scooter; arrive at intersection
+18,9709626638f5406f9f773348150d02fd,scene-0274,3,singapore-onenorth,n015,40,,Peds; construction zone; construction workers; barriers; cars; jaywalker
+19,36f27b26ef4c423c9b79ac984dc33bae,scene-0795,8,singapore-queenstown,n015,40,,Motorcycle; cars; trucks; bus; cross intersection; stopped bus; cones; peds on sidewalk
+20,3b2ee26cb8484f77895bc336663df502,scene-0107,2,boston-seaport,n008,40,,Cross busy intersection; bendy bus changing lane
+21,3a2d9bf6115f40898005d1c1df2b7282,scene-0915,9,boston-seaport,n008,41,,Rain; parked cars; turn left; peds; bus; truck; ped crossing crosswalk; suitcase; cones
+22,3dd9ad3f963e4f588d75c112cbf07f56,scene-0017,1,singapore-onenorth,n015,40,,Barriers; peds; arriving at busy intersection
+23,68e79a88244f447f993a72da444b29ba,scene-0096,1,boston-seaport,n008,39,,Cross busy intersection; cyclist nearby; construction barriers and cones
+24,40209c4e465d4b4e8341ebd52be0d842,scene-0783,8,boston-seaport,n008,41,,Cars; parked cars; overtaking a bus; peds; parked scooter; truck; arrive at intersection; cones
+25,8edbc31083ab4fb187626e5b3c0411f7,scene-0039,1,singapore-onenorth,n015,40,,Busy street; parked cars; parking lot; ped sitting at bus stop; motorcycle driving
+26,d3b86ca0a17840109e9e049b3dd40037,scene-0905,9,boston-seaport,n008,40,,Rain; construction site; barriers; cones; peds crossing crosswalk; ship; parked cars; truck; peds; large truck
+27,0dae482684ce4cd69a7258f55bc98d73,scene-1071,10,singapore-hollandvillage,n015,40,,Night; scooters; peds; parked bicycle; bus stop; cross intersection;  ped with bag near road
+28,201b7c65a61f4bc1a2333ea90ba9a932,scene-0276,3,singapore-onenorth,n015,40,,Intersection; peds; cars; scooter; parked bicycle
+29,3dd2be428534403ba150a0b60abc6a0a,scene-0035,1,singapore-onenorth,n015,40,,Parking lots; trash can; bump; scooter; peds; potential jaywalkers; bus stop; oncoming bus
+30,8377abf77f464a9cb62eacf63f383422,scene-0275,3,singapore-onenorth,n015,40,,Peds; bus; barriers; stopped at intersection
+31,696a45dbd11346b794fdce43fa0a1770,scene-0925,9,singapore-queenstown,n015,40,,Wait; peds crossing crosswalk; bus
+32,3045ed93c2534ec2a5cabea89b186bd9,scene-0637,6,boston-seaport,n008,40,,Rain; parked cars; peds; jaywalker; water reflections; parked bicycle; ped with umbrella; cross intersection
+33,6d872d1448814fd189e631b1187c3771,scene-0344,4,singapore-onenorth,n015,40,,Wait at intersection; construction; bus; scooter
+34,fb73d1a6c16147ee9416faf6b310fadb,scene-0109,2,boston-seaport,n008,40,,Cross roundabout; construction vehicle; ped walking along the road side
+35,7061c08f7eec4495979a0cf68ab6bb79,scene-0782,8,boston-seaport,n008,41,,Parked cars; peds; crossing intersection; bus; trailer; cones
+36,e6f1a7e6218a4737bfedc6af90926b3e,scene-1062,10,singapore-hollandvillage,n015,40,,Night; difficult lighting; parked bicycle; wait at intersection; construction
+37,dce6f3f2bf6b4859abcf3268581969d3,scene-0906,9,boston-seaport,n008,41,,Rain; parked cars; parked bicycle; peds; cones; cross intersection; parking lot; turning right
+38,7e8ff24069ff4023ac699669b2c920de,scene-0909,9,boston-seaport,n008,40,,Rain; ped; cones; parked cars; construction site; construction vehicle; parking lot; barriers
+39,6f83169d067343658251f72e1dd17dbc,scene-0553,6,boston-seaport,n008,41,,Wait at intersection; bicycle; large truck; peds crossing crosswalk; ped with stroller
+40,2086743226764f268fe8d4b0b7c19590,scene-0962,9,singapore-onenorth,n015,41,,Bus; many peds; changing lane; parked van; cones; low traffic
+41,c5224b9b454b4ded9b5d2d2634bbda8a,scene-0796,8,singapore-queenstown,n015,40,,Scooter; peds on sidewalk; bus; cars; truck; fake construction worker; bicycle; cross intersection; car overtaking us
+42,85889db3628342a482c5c0255e5347e9,scene-1070,10,singapore-hollandvillage,n015,41,,Night; congestion; peds; motorcycle
+43,3ada261efee347cba2e7557794f1aec8,scene-0626,6,boston-seaport,n008,40,,Rain; construction; bendy bus; roundabout
+44,3363f396bb43405fbdd17d65dc123d4e,scene-0555,6,boston-seaport,n008,40,,Cross intersection; construction; big truck
+45,5a0dd8908a3a459b83ec5eb6ac7d0f82,scene-0036,1,singapore-onenorth,n015,40,,Parked bicycle; construction; peds; workers; construction vehicle; bike racks
+46,380ff00ec86447e3b986edc8e82ffba7,scene-0798,8,singapore-queenstown,n015,40,,Start at intersection; dense traffic; stopped scooter; parked bicycles; cross intersection; truck; bus; peds
+47,2abb3f3517c64446a5768df5665da49d,scene-0522,5,boston-seaport,n008,40,,Parked bicycle; pedestrian; parked cars; cyclist; construction zone
+48,f5b29a1e09d04355adcd60ab72de006b,scene-0638,6,boston-seaport,n008,41,,Rain; turn left; water reflections; jaywalker; parked cars
+49,c92fdd793fbb4401b12782a9b8d4a499,scene-0966,9,singapore-onenorth,n015,41,,Many peds; construction; peds unloading trucks; narrow road; avoidance; parked scooter; parking lot; parked bicycles

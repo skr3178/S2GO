@@ -1,0 +1,17 @@
+class,kind,scenes_in_curated,instances_in_curated,scenes_in_val(150)_pool,instances_in_val(150)_pool,retention_pct
+barrier,thing(boxes),34,18309,68,26992,67.8
+bicycle,thing(boxes),32,914,77,2381,38.4
+bus,thing(boxes),33,1677,69,3158,53.1
+car,thing(boxes),50,25802,150,80107,32.2
+const_veh,thing(boxes),30,1546,55,2678,57.7
+motorcycle,thing(boxes),29,1241,66,2508,49.5
+pedestrian,thing(boxes),48,14739,133,34494,42.7
+traffic_cone,thing(boxes),41,9461,97,15597,60.7
+trailer,thing(boxes),18,1821,44,4159,43.8
+truck,thing(boxes),48,5247,124,15704,33.4
+drive_surf,stuff(voxels),50,20273926,150,55378059,36.6
+other_flat,stuff(voxels),43,1382018,107,2442130,56.6
+sidewalk,stuff(voxels),50,6068813,150,18847547,32.2
+terrain,stuff(voxels),47,8568485,137,25688453,33.4
+manmade,stuff(voxels),50,19537231,150,58280979,33.5
+vegetation,stuff(voxels),50,19793739,148,61861872,32.0
