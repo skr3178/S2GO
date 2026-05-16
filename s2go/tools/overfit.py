@@ -290,7 +290,7 @@ def compute_stage1_loss(outputs, sequence, lambdas, losses, device,
 # ────────────────────────────────────────────────────────────────────────────
 # Overfit run
 # ────────────────────────────────────────────────────────────────────────────
-def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
+def main(n_iters: int = 50, total_iters: int = None, n_overfit: int = 4, log_every: int = 5,
          lr: float = 4e-4, lr_backbone_mult: float = 0.25,
          grad_clip_max_norm: float = 10.0,
          num_layers: int = 2, num_pts: int = 4,
@@ -515,40 +515,66 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
         raise ValueError("--grad-accum-steps must be >= 1")
     n_optim_steps = (n_iters + grad_accum_steps - 1) // grad_accum_steps
 
+    # Master-curve horizon. The LR schedule SHAPE is defined over the full
+    # planned training length (`total_iters`), independent of how many
+    # micro-iters THIS invocation actually runs (`n_iters`). Default
+    # total_iters=n_iters → byte-identical to a single-shot run (every
+    # existing command/script unaffected). Decoupling them lets a run that
+    # stops early at a planned boundary (e.g. epoch 3 of a 6-epoch plan,
+    # via --n-iters 30120 --total-iters 60240) and a later --resume-from
+    # follow ONE continuous curve: both invocations pass the same
+    # --total-iters, so the cosine is sampled at the ABSOLUTE optim-step
+    # regardless of where this window starts/stops.
+    if total_iters is None:
+        total_iters = n_iters
+    if total_iters < n_iters:
+        raise ValueError(f"--total-iters ({total_iters}) < --n-iters ({n_iters}); "
+                         f"the LR-curve horizon cannot be shorter than this run's "
+                         f"window. Set --total-iters to the FULL planned length.")
+    total_optim_steps = (total_iters + grad_accum_steps - 1) // grad_accum_steps
+
     # LR schedule. For short diagnostic runs (50-500 iters), cosine-to-zero
     # makes the last 20% of iters effectively useless because lr→0. Default is
     # 'constant' so LR stays at its peak throughout. Use 'cosine' (decays to
     # lr_min) for a paper-spec multi-epoch run where decay matches horizon.
+    # All decaying schedules are shaped to `total_optim_steps` (the master
+    # curve), NOT this run's `n_optim_steps`, so resume is continuous.
     if lr_schedule == 'cosine':
-        scheduler = CosineAnnealingLR(optim, T_max=n_optim_steps, eta_min=lr_min)
-        print(f"    LR schedule: cosine (T_max={n_optim_steps} optim-steps, eta_min={lr_min:.0e})")
+        scheduler = CosineAnnealingLR(optim, T_max=total_optim_steps, eta_min=lr_min)
+        print(f"    LR schedule: cosine (T_max={total_optim_steps} optim-steps "
+              f"[master curve], eta_min={lr_min:.0e})")
     elif lr_schedule == 'constant':
-        # factor=1.0, total_iters=n_optim_steps keeps LR at peak the entire run.
-        scheduler = ConstantLR(optim, factor=1.0, total_iters=n_optim_steps)
+        # factor=1.0 keeps LR at peak the entire run regardless of total_iters.
+        scheduler = ConstantLR(optim, factor=1.0, total_iters=total_optim_steps)
         print(f"    LR schedule: constant (peak lr held for all {n_optim_steps} optim-steps)")
     elif lr_schedule == 'warmup_cosine':
         # Linear warmup 0 → peak over `warmup_iters` micro-iters, then cosine
-        # decay to peak × 0.10 over the remaining (n_iters - warmup_iters)
+        # decay to peak × 0.10 over the remaining (total_iters - warmup_iters)
         # micro-iters. Scheduler ticks once per optim step, so convert both
         # warmup and total to optim-step units (float, since fractional).
         warmup_optim = warmup_iters / grad_accum_steps
-        if warmup_optim >= n_optim_steps:
-            raise ValueError(f"warmup_iters={warmup_iters} ≥ n_iters={n_iters} "
+        if warmup_optim >= total_optim_steps:
+            raise ValueError(f"warmup_iters={warmup_iters} ≥ total_iters={total_iters} "
                               f"after dividing by grad_accum_steps={grad_accum_steps}; "
-                              f"warmup spans the whole run.")
+                              f"warmup spans the whole curve.")
         def _warmup_cosine_lambda(s):
             if s < warmup_optim:
                 return s / warmup_optim
-            progress = min((s - warmup_optim) / (n_optim_steps - warmup_optim), 1.0)
+            progress = min((s - warmup_optim) / (total_optim_steps - warmup_optim), 1.0)
             cosine_mul = 0.5 * (1.0 + math.cos(math.pi * progress))
             return 0.10 + 0.90 * cosine_mul
         scheduler = LambdaLR(optim, lr_lambda=_warmup_cosine_lambda)
         print(f"    LR schedule: warmup_cosine "
               f"(warmup {warmup_iters} micro-iters ≈ {warmup_optim:.1f} optim-steps, "
-              f"cosine to peak×0.10 over remaining {n_optim_steps - warmup_optim:.1f})")
+              f"cosine to peak×0.10 over {total_optim_steps - warmup_optim:.1f} optim-steps "
+              f"[master curve = {total_iters} micro-iters])")
     else:
         raise ValueError(f"unknown lr_schedule '{lr_schedule}' "
                          f"(use 'cosine', 'constant', or 'warmup_cosine')")
+    if total_iters != n_iters:
+        print(f"    master-curve horizon: {total_iters} micro-iters "
+              f"({total_optim_steps} optim-steps); THIS run window: "
+              f"iters → {n_iters} ({n_optim_steps} optim-steps)")
     if grad_accum_steps > 1:
         print(f"    gradient accumulation: {grad_accum_steps} micro-iters per "
               f"optimizer step → {n_optim_steps} optim-steps over {n_iters} micro-iters "
@@ -673,6 +699,7 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
                 'use_checkpoint':       use_checkpoint,
                 'warp_dts':             list(warp_dts),
                 'iters_trained':        resume_iter if resume_iter is not None else n_iters,
+                'total_iters':          total_iters,
                 'stage':                1,
             },
         }
@@ -1038,7 +1065,19 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
 if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser()
-    p.add_argument("--n-iters", type=int, default=50)
+    p.add_argument("--n-iters", type=int, default=50,
+                    help="micro-iters THIS invocation runs (the planned stop "
+                         "point; loop is range(start_iter, n_iters)). For a "
+                         "planned early stop, set this to the boundary "
+                         "(e.g. 30120 = epoch 3) and --total-iters to the full plan.")
+    p.add_argument("--total-iters", type=int, default=None,
+                    help="FULL planned training length in micro-iters — defines "
+                         "the LR-curve (master-curve) horizon. Default = --n-iters "
+                         "(single-shot, byte-identical to legacy behaviour). Set "
+                         "this to the final horizon (e.g. 60240 = 6 epochs) and "
+                         "leave it identical across the initial run AND every "
+                         "--resume-from so the cosine stays continuous across "
+                         "planned stops/resumes. Must be ≥ --n-iters.")
     p.add_argument("--num-layers", type=int, default=2,
                     help="paper-spec T2: 6; T0/T1 default: 2")
     p.add_argument("--num-pts", type=int, default=4,
@@ -1216,7 +1255,7 @@ if __name__ == "__main__":
         # depth_only=True is the gate that disables denoise compute + RGB + warps.
         a.depth_only = True
 
-    main(n_iters=a.n_iters, log_every=a.log_every,
+    main(n_iters=a.n_iters, total_iters=a.total_iters, log_every=a.log_every,
          lr=a.lr, grad_clip_max_norm=a.grad_clip,
          num_layers=a.num_layers, num_pts=a.num_pts,
          feedforward_channels=a.feedforward_channels,
