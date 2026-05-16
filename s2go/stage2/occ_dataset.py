@@ -33,7 +33,13 @@ from ..datasets.nusc_loader import NuScenesLoader
 from . import GRID_SHAPE, EMPTY_CLASS_ID
 
 
-DEFAULT_OCC_ROOT = "/media/skr/storage/self_driving/S2GO/data/nuscenes_occ/nuscenes_occ/samples"
+# Per-PC override via S2GO_DATA_ROOT env var (see s2go/datasets/nusc_loader.py).
+# Keeps this file byte-identical across machines so `git pull` never
+# conflicts on a hardcoded path. Fallback = canonical host-1 path.
+_S2GO_DATA_ROOT = os.environ.get(
+    "S2GO_DATA_ROOT", "/media/skr/storage/self_driving/S2GO/data")
+DEFAULT_OCC_ROOT = os.path.join(
+    _S2GO_DATA_ROOT, "nuscenes_occ", "nuscenes_occ", "samples")
 
 
 class Stage2OccLoader:

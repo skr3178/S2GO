@@ -49,11 +49,21 @@ def _quat_trans_to_4x4(quat: list, trans: list) -> np.ndarray:
     return T
 
 
+# Machine-specific data root. Override per-PC with the S2GO_DATA_ROOT env
+# var (base dir that contains nuscenes/ and nuscenes_occ/) instead of
+# editing this line — keeps the file byte-identical across machines so
+# `git pull` never conflicts on a hardcoded path. Fallback = canonical
+# host-1 path.
+S2GO_DATA_ROOT = os.environ.get(
+    "S2GO_DATA_ROOT", "/media/skr/storage/self_driving/S2GO/data")
+_DEFAULT_DATAROOT = os.path.join(S2GO_DATA_ROOT, "nuscenes")
+
+
 class NuScenesLoader(Dataset):
     """Yields T-frame mini-sequences. __getitem__ returns a list of T dicts."""
 
     def __init__(self,
-                 dataroot: str = "/media/skr/storage/self_driving/S2GO/data/nuscenes",
+                 dataroot: str = _DEFAULT_DATAROOT,
                  version: str = "v1.0-trainval",
                  T: int = 4,
                  image_size=(256, 704),
