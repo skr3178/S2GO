@@ -30,6 +30,7 @@ import math
 import os
 import random
 import time
+from datetime import datetime
 from typing import Dict, List, Optional, Sequence
 
 import torch
@@ -201,7 +202,9 @@ def _accumulate_train_class_counts(train_class_seen: Dict[str, int],
 
 
 def main(splits_json: str,
-         out_dir: str,
+         out_dir: Optional[str] = None,
+         run_name: Optional[str] = None,
+         out_root: str = "out",
          stage1_ckpt: Optional[str] = None,
          resume_from: Optional[str] = None,
          from_scratch: bool = True,
@@ -244,6 +247,26 @@ def main(splits_json: str,
     device = "cuda"
     torch.manual_seed(seed)
     random.seed(seed)
+
+    # ── Timestamped run folder (no clobbering across re-runs) ─────────────
+    # Every launch gets out/<base>-<YYYYmmdd-HHMMSS>/ so a restart never
+    # overwrites a previous run's ckpt_best_val.pt / ckpt_periodic.pt etc.
+    # --run-name sets <base> under --out-root; legacy --out-dir is accepted
+    # (its basename becomes <base>, its parent becomes the root) but is now
+    # timestamped too. At least one of the two must be given.
+    if run_name:
+        _base, _parent = run_name, out_root
+    elif out_dir:
+        _od = out_dir.rstrip('/')
+        _base = os.path.basename(_od) or "stage2"
+        _parent = os.path.dirname(_od) or out_root
+        print(f"  [deprecation] --out-dir is legacy; run dir is now "
+              f"timestamped (no overwrite). Prefer --run-name.")
+    else:
+        raise SystemExit("stage2_train: pass --run-name NAME (or legacy "
+                          "--out-dir DIR); at least one is required.")
+    _ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    out_dir = os.path.join(_parent, f"{_base}-{_ts}")
     os.makedirs(out_dir, exist_ok=True)
     torch.cuda.empty_cache()
 
@@ -473,10 +496,14 @@ def main(splits_json: str,
             rng = resume_state.get('rng_state')
             if rng is not None:
                 try:
-                    torch.set_rng_state(rng['torch'])
+                    # torch.load(map_location=device) moves these to CUDA;
+                    # set_rng_state[_all] require CPU uint8 tensors.
+                    torch.set_rng_state(rng['torch'].cpu().to(torch.uint8))
                     if rng.get('torch_cuda') is not None and torch.cuda.is_available():
-                        torch.cuda.set_rng_state_all(rng['torch_cuda'])
+                        torch.cuda.set_rng_state_all(
+                            [t.cpu().to(torch.uint8) for t in rng['torch_cuda']])
                     random.setstate(rng['python'])
+                    print(f"    [resume] RNG state restored")
                 except Exception as e:
                     print(f"    [resume] RNG restore skipped ({e})")
             if start_iter >= n_iters:
@@ -877,7 +904,17 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--splits-json", type=str, required=True,
                     help="path to JSON with train_start_tokens + val_start_tokens")
-    p.add_argument("--out-dir", type=str, required=True)
+    p.add_argument("--out-dir", type=str, default=None,
+                    help="[legacy] run directory. Still accepted, but the run "
+                         "now goes to <parent>/<basename>-<timestamp>/ so "
+                         "re-runs never clobber prior checkpoints. Prefer "
+                         "--run-name.")
+    p.add_argument("--run-name", type=str, default=None,
+                    help="run folder base name → <out-root>/<run-name>-"
+                         "<YYYYmmdd-HHMMSS>/. One of --run-name / --out-dir "
+                         "is required.")
+    p.add_argument("--out-root", type=str, default="out",
+                    help="parent dir for --run-name run folders (default: out).")
     p.add_argument("--stage1-ckpt", type=str, default=None)
     p.add_argument("--resume-from", type=str, default=None,
                     help="Continue training from a Stage-2 ckpt. If the ckpt "
@@ -988,6 +1025,8 @@ if __name__ == "__main__":
         from_scratch = a.from_scratch or (a.stage1_ckpt is None)
     main(splits_json=a.splits_json,
          out_dir=a.out_dir,
+         run_name=a.run_name,
+         out_root=a.out_root,
          stage1_ckpt=a.stage1_ckpt,
          resume_from=a.resume_from,
          from_scratch=from_scratch,
