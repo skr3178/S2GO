@@ -54,7 +54,8 @@ def to_device(d: dict, device) -> dict:
             for k, v in d.items()}
 
 
-def _build_ckpt(backbone, model, arch, sem_loss, n_iters_done, extra=None):
+def _build_ckpt(backbone, model, arch, sem_loss, n_iters_done, extra=None,
+                optim=None, scheduler=None, resume_iter=None):
     cfg = {
         'K': int(arch['K']), 'J': int(arch['J']),
         'embed_dims': int(arch['embed_dims']),
@@ -71,12 +72,31 @@ def _build_ckpt(backbone, model, arch, sem_loss, n_iters_done, extra=None):
     }
     if extra:
         cfg.update(extra)
-    return {
+    out = {
         'backbone': backbone.state_dict(),
         'segmentor': model.segmentor.state_dict(),
         'semantic_head': model.semantic_head.state_dict(),
         'config': cfg,
     }
+    # Resumable-checkpoint extras. Only the periodic crash-recovery ckpt
+    # passes these; best_train / best_val stay weights-only (small, for
+    # eval/deploy). Restored by `--resume-from` for a true (optimizer +
+    # scheduler + iter + RNG) continuation. Backward-compatible: a ckpt
+    # written without these (e.g. the pre-resume 3-epoch run) simply lacks
+    # the keys and `--resume-from` falls back to a weights-only warm-start.
+    if optim is not None:
+        out['optimizer'] = optim.state_dict()
+    if scheduler is not None:
+        out['scheduler'] = scheduler.state_dict()
+    if resume_iter is not None:
+        out['resume_iter'] = int(resume_iter)
+        out['rng_state'] = {
+            'torch': torch.get_rng_state(),
+            'torch_cuda': (torch.cuda.get_rng_state_all()
+                           if torch.cuda.is_available() else None),
+            'python': random.getstate(),
+        }
+    return out
 
 
 def _filter_indices_by_tokens(occ_loader: Stage2OccLoader,
@@ -183,6 +203,7 @@ def _accumulate_train_class_counts(train_class_seen: Dict[str, int],
 def main(splits_json: str,
          out_dir: str,
          stage1_ckpt: Optional[str] = None,
+         resume_from: Optional[str] = None,
          from_scratch: bool = True,
          query_init: str = 'learned',
          num_layers_override: Optional[int] = None,
@@ -249,7 +270,39 @@ def main(splits_json: str,
           f"val_pos={len(val_pos)}")
 
     # ── [2/6] Model arch ──────────────────────────────────────────────────
-    if from_scratch:
+    # `resume_state` holds a Stage-2 ckpt to continue from (set only when
+    # --resume-from is given). It is loaded AFTER the model is built (below)
+    # so backbone+segmentor+semantic_head are restored as a unit, NOT via the
+    # Stage-1 bridge (which discards the semantic head). `ckpt` stays the
+    # Stage-1-bridge variable so the existing `if ckpt is not None` path is
+    # untouched.
+    resume_state = None
+    if resume_from is not None:
+        assert os.path.isfile(resume_from), \
+            f"--resume-from ckpt not found: {resume_from}"
+        assert stage1_ckpt is None, \
+            "--resume-from and --stage1-ckpt are mutually exclusive"
+        print(f"[2/6] Resume: reading Stage-2 ckpt: {resume_from}")
+        resume_state = torch.load(resume_from, map_location=device)
+        r_cfg = resume_state.get('config', {})
+        assert int(r_cfg.get('stage', 2)) == 2, \
+            "--resume-from expects a Stage-2 ckpt (config.stage==2)"
+        arch = dict(
+            K=int(r_cfg.get('K', 900)),
+            J=int(r_cfg.get('J', 10)),
+            embed_dims=int(r_cfg.get('embed_dims', 768)),
+            num_layers=int(r_cfg.get('num_layers', 6)),
+            num_pts=int(r_cfg.get('num_pts', 13)),
+            feedforward_channels=int(r_cfg.get('feedforward_channels', 3072)),
+        )
+        has_optim = 'optimizer' in resume_state and 'scheduler' in resume_state \
+            and 'resume_iter' in resume_state
+        print(f"    arch from ckpt config: {arch}")
+        print(f"    ckpt iters_trained={r_cfg.get('iters_trained', '?')}  "
+              f"kind={r_cfg.get('kind', '?')}  "
+              f"{'TRUE-RESUME (optimizer+scheduler+iter present)' if has_optim else 'WEIGHTS-ONLY warm-start (no optimizer/scheduler state in ckpt)'}")
+        ckpt = None
+    elif from_scratch:
         print("[2/6] From-scratch arch (no Stage-1 ckpt)")
         # Paper-spec T2 (= paper Table 3 architecture, same across rows a-e).
         # The earlier T0-tier default (num_layers=2, num_pts=4, ffn=2048) was
@@ -310,6 +363,19 @@ def main(splits_json: str,
         print(f"      backbone:  missing={len(bb_missing)}, unexpected={len(bb_unexpected)}")
         print(f"      segmentor: missing={len(seg_missing)}, unexpected={len(seg_unexpected)}, "
               f"head_partial_transferred={head_partial}")
+    elif resume_state is not None:
+        # Continuation: restore the full Stage-2 model as a unit (NOT via the
+        # Stage-1 bridge, which would re-init the semantic head).
+        bb_miss, bb_unx = backbone.load_state_dict(
+            resume_state['backbone'], strict=False)
+        sg_miss, sg_unx = model.segmentor.load_state_dict(
+            resume_state['segmentor'], strict=False)
+        sh_miss, sh_unx = model.semantic_head.load_state_dict(
+            resume_state['semantic_head'], strict=False)
+        print("    resume: backbone + segmentor + semantic_head restored")
+        print(f"      backbone:      missing={len(bb_miss)}, unexpected={len(bb_unx)}")
+        print(f"      segmentor:     missing={len(sg_miss)}, unexpected={len(sg_unx)}")
+        print(f"      semantic_head: missing={len(sh_miss)}, unexpected={len(sh_unx)}")
     else:
         print("    backbone: torchvision ResNet50 pretrained init")
         print("    segmentor + semantic head: random init")
@@ -390,6 +456,39 @@ def main(splits_json: str,
               f"micro-iters (effective batch ≈ {grad_accum_steps})")
     sem_ignore_idx = EMPTY_CLASS_ID if ignore_empty_in_sem else -1
 
+    # ── Resume: restore optimizer / scheduler / iter / RNG ────────────────
+    # `start_iter` is the micro-iter the loop begins at. Default 0. For a
+    # TRUE resume (ckpt carries optimizer+scheduler+resume_iter), continue
+    # the exact AdamW moments + cosine position + RNG so the schedule lines
+    # up — this requires the SAME --iters / --grad-accum-steps / --warmup-iters
+    # / --lr* as the original run (the LambdaLR closure is rebuilt from them).
+    # For a WEIGHTS-ONLY warm-start (the pre-resume 3-epoch ckpt), keep the
+    # freshly-built optimizer + scheduler and start a new schedule at iter 0.
+    start_iter = 0
+    if resume_state is not None:
+        if all(k in resume_state for k in ('optimizer', 'scheduler', 'resume_iter')):
+            optim.load_state_dict(resume_state['optimizer'])
+            scheduler.load_state_dict(resume_state['scheduler'])
+            start_iter = int(resume_state['resume_iter'])
+            rng = resume_state.get('rng_state')
+            if rng is not None:
+                try:
+                    torch.set_rng_state(rng['torch'])
+                    if rng.get('torch_cuda') is not None and torch.cuda.is_available():
+                        torch.cuda.set_rng_state_all(rng['torch_cuda'])
+                    random.setstate(rng['python'])
+                except Exception as e:
+                    print(f"    [resume] RNG restore skipped ({e})")
+            if start_iter >= n_iters:
+                raise ValueError(
+                    f"--resume-from iter {start_iter} >= --iters {n_iters}; "
+                    f"raise --iters to continue training further.")
+            print(f"    [resume] TRUE resume from micro-iter {start_iter} "
+                  f"(optimizer + scheduler + RNG restored)")
+        else:
+            print(f"    [resume] WEIGHTS-ONLY warm-start (fresh optimizer + "
+                  f"scheduler; new schedule over {n_iters} iters from iter 0)")
+
     # ── [5/6] Train loop ──────────────────────────────────────────────────
     print(f"[5/6] Streaming training for {n_iters} iters "
           f"(log {log_every}, eval every {eval_every}, save_periodic_every "
@@ -417,7 +516,7 @@ def main(splits_json: str,
     ckpt_best_val   = os.path.join(out_dir, 'ckpt_best_val.pt')
     ckpt_periodic   = os.path.join(out_dir, 'ckpt_periodic.pt')
 
-    for i in range(n_iters):
+    for i in range(start_iter, n_iters):
         # Sample a train sequence (with replacement)
         pos = train_pos[random.randrange(len(train_pos))]
         seq_cpu = occ_loader[pos]
@@ -651,8 +750,13 @@ def main(splits_json: str,
         # never satisfied jointly with `is_accum_end` (modulo collision).
         if is_accum_end and save_periodic_every and optim_step_idx > 0 \
                 and optim_step_idx % save_periodic_every == 0:
+            # Resumable: embed optimizer + scheduler + iter + RNG so
+            # `--resume-from ckpt_periodic.pt` continues exactly. Resuming at
+            # i+1 means the *next* iter is i+1 (this window already stepped).
             torch.save(_build_ckpt(backbone, model, arch, sem_loss, i + 1,
-                                    {'kind': 'periodic'}),
+                                    {'kind': 'periodic'},
+                                    optim=optim, scheduler=scheduler,
+                                    resume_iter=i + 1),
                        ckpt_periodic)
 
         # ── Periodic val eval ─────────────────────────────────────────────
@@ -775,6 +879,15 @@ if __name__ == "__main__":
                     help="path to JSON with train_start_tokens + val_start_tokens")
     p.add_argument("--out-dir", type=str, required=True)
     p.add_argument("--stage1-ckpt", type=str, default=None)
+    p.add_argument("--resume-from", type=str, default=None,
+                    help="Continue training from a Stage-2 ckpt. If the ckpt "
+                         "carries optimizer+scheduler+iter (ckpt_periodic.pt "
+                         "from a post-resume-feature run) this is a TRUE resume "
+                         "— pass the SAME --iters/--grad-accum-steps/--lr* as "
+                         "the original. If it is weights-only (e.g. an older "
+                         "ckpt_best_val.pt) it is a warm-start: weights load, "
+                         "fresh optimizer + new schedule over --iters from 0. "
+                         "Mutually exclusive with --stage1-ckpt.")
     p.add_argument("--from-scratch", action="store_true", default=False,
                     help="train Stage 2 from scratch (row (a) ablation). "
                          "Implicit when --stage1-ckpt is not provided.")
@@ -866,10 +979,17 @@ if __name__ == "__main__":
     # Coalesce: from-scratch is implicit when no --stage1-ckpt was given.
     # Without this, --from-scratch's argparse default was permanently True
     # and the Stage-1 bridge path could never run from CLI.
-    from_scratch = a.from_scratch or (a.stage1_ckpt is None)
+    # When resuming, neither from-scratch nor the Stage-1 bridge applies —
+    # main() checks resume_from first. Keep from_scratch False so the arch
+    # override asserts (which require from_scratch) can't silently pass.
+    if a.resume_from is not None:
+        from_scratch = False
+    else:
+        from_scratch = a.from_scratch or (a.stage1_ckpt is None)
     main(splits_json=a.splits_json,
          out_dir=a.out_dir,
          stage1_ckpt=a.stage1_ckpt,
+         resume_from=a.resume_from,
          from_scratch=from_scratch,
          query_init=a.query_init,
          num_layers_override=a.num_layers,
