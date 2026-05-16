@@ -16,7 +16,11 @@ Run:
     python -m s2go.tools.overfit
 """
 import math
+import os
+import json
+import random
 import time
+from datetime import datetime
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
@@ -313,6 +317,10 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
          save_best: bool = False,
          save_best_window: int = 50,
          save_best_cooldown: int = 100,
+         run_name: str = None,
+         out_root: str = "out",
+         resume_from: str = None,
+         save_periodic_every: int = 250,
          grad_accum_steps: int = 1,
          eval_every: int = 0,
          eval_seqs=(0, 100, 5000, 20000),
@@ -343,6 +351,44 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
     device = "cuda"
     torch.manual_seed(0)
     torch.cuda.empty_cache()
+
+    # ── Run folder + checkpoint path resolution ───────────────────────────
+    # Saving is enabled if the user asked for output in any way (--save-path,
+    # --run-name, or --resume-from). Quick smoke tests with none of these set
+    # still write nothing (legacy behaviour preserved). When saving IS on,
+    # every launch gets its own timestamped folder so a new run never
+    # overwrites a previous run's checkpoints.
+    saving_enabled = (save_path is not None) or (run_name is not None) \
+                     or (resume_from is not None)
+    run_dir = None
+    ckpt_final_path = ckpt_best_path = ckpt_eval_best_path = ckpt_last_path = None
+    history_out_path = history_path
+    if saving_enabled:
+        if run_name:
+            base = run_name
+        elif save_path:
+            # legacy --save-path: derive a name from its parent dir, but still
+            # timestamp so re-runs don't clobber.
+            base = os.path.basename(os.path.dirname(os.path.abspath(save_path))) \
+                   or "stage1"
+            print(f"  [deprecation] --save-path is legacy; using --run-name "
+                  f"semantics. Run dir is timestamped (no overwrite).")
+        else:
+            base = "stage1"
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        run_dir = os.path.join(out_root, f"{base}-{ts}")
+        os.makedirs(run_dir, exist_ok=True)
+        ckpt_final_path     = os.path.join(run_dir, "ckpt_final.pt")
+        ckpt_best_path      = os.path.join(run_dir, "ckpt_best.pt")
+        ckpt_eval_best_path = os.path.join(run_dir, "ckpt_eval_best.pt")
+        ckpt_last_path      = os.path.join(run_dir, "ckpt_last.pt")
+        history_out_path    = os.path.join(run_dir, "history.json")
+        print(f"  run dir: {run_dir}")
+        print(f"    ckpt_last (resume anchor) every "
+              f"{save_periodic_every if save_periodic_every > 0 else 'OFF'} "
+              f"micro-iters; best/eval_best/final are weights-only")
+        if resume_from:
+            print(f"    resuming from: {resume_from}")
 
     loader = NuScenesLoader(
         T=t_seq,
@@ -604,9 +650,17 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
     n_eval_saves = 0
     last_eval_dist = float('nan')
 
-    def _build_ckpt():
-        """Build the same checkpoint dict used by the end-of-training save."""
-        return {
+    def _build_ckpt(full_state=False, resume_iter=None, extra=None):
+        """Build a checkpoint dict.
+
+        full_state=True additionally embeds optimizer + scheduler + RNG state
+        and `resume_iter`, so `--resume-from` can do a TRUE resume (continue
+        the exact optimizer/LR trajectory from micro-iter `resume_iter`).
+        Weights-only ckpts (best / eval_best / final) omit these and can only
+        be used as a warm-start (fresh optimizer, start_iter=0) — mirrors the
+        Stage-2 trainer's convention.
+        """
+        out = {
             'backbone':  backbone.state_dict(),
             'segmentor': seg.state_dict(),
             'config': {
@@ -618,16 +672,75 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
                 'rgb_ssim_weight':      rgb_ssim_weight,
                 'use_checkpoint':       use_checkpoint,
                 'warp_dts':             list(warp_dts),
-                'iters_trained':        n_iters,
+                'iters_trained':        resume_iter if resume_iter is not None else n_iters,
+                'stage':                1,
             },
         }
+        if resume_from:
+            out['config']['resumed_from'] = resume_from
+        if extra:
+            out['config'].update(extra)
+        if full_state:
+            out['optimizer'] = optim.state_dict()
+            out['scheduler'] = scheduler.state_dict()
+            out['resume_iter'] = int(resume_iter if resume_iter is not None else n_iters)
+            out['rng_state'] = {
+                'torch': torch.get_rng_state(),
+                'torch_cuda': (torch.cuda.get_rng_state_all()
+                               if torch.cuda.is_available() else None),
+                'python': random.getstate(),
+            }
+        return out
 
     def _fmt_split(v_t0, v_minus, v_plus, fmt):
         def _f(v):
             return (fmt.format(v) if v == v else "  --  ")    # NaN-safe via x==x
         return f"{_f(v_t0)}/{_f(v_minus)}/{_f(v_plus)}"
 
-    for i in range(n_iters):
+    # ── Resume-from (mirrors stage2_train.py --resume-from) ───────────────
+    # TRUE resume if the ckpt carries optimizer+scheduler+resume_iter (i.e. a
+    # ckpt_last.pt); otherwise WEIGHTS-ONLY warm-start (start_iter=0, fresh
+    # optimizer) for a best/eval_best/final ckpt. backbone+segmentor always
+    # loaded non-strict so minor arch metadata drift doesn't hard-fail.
+    start_iter = 0
+    if resume_from is not None:
+        assert os.path.isfile(resume_from), \
+            f"--resume-from ckpt not found: {resume_from}"
+        rs = torch.load(resume_from, map_location=device)
+        bb_miss, bb_unx = backbone.load_state_dict(rs['backbone'], strict=False)
+        sg_miss, sg_unx = seg.load_state_dict(rs['segmentor'], strict=False)
+        has_full = all(k in rs for k in ('optimizer', 'scheduler', 'resume_iter'))
+        print(f"  [resume] loaded weights from {resume_from} "
+              f"(backbone missing={len(bb_miss)}/unexpected={len(bb_unx)}, "
+              f"segmentor missing={len(sg_miss)}/unexpected={len(sg_unx)})")
+        if has_full:
+            optim.load_state_dict(rs['optimizer'])
+            scheduler.load_state_dict(rs['scheduler'])
+            start_iter = int(rs['resume_iter'])
+            rng = rs.get('rng_state')
+            if rng is not None:
+                try:
+                    # torch.load(map_location=device) moves these tensors to
+                    # CUDA; set_rng_state[_all] require CPU uint8 tensors.
+                    torch.set_rng_state(rng['torch'].cpu().to(torch.uint8))
+                    if rng.get('torch_cuda') is not None and torch.cuda.is_available():
+                        torch.cuda.set_rng_state_all(
+                            [t.cpu().to(torch.uint8) for t in rng['torch_cuda']])
+                    random.setstate(rng['python'])
+                    print(f"  [resume] RNG state restored")
+                except Exception as e:
+                    print(f"  [resume] WARN: could not fully restore RNG ({e})")
+            if start_iter >= n_iters:
+                raise SystemExit(
+                    f"--resume-from iter {start_iter} >= --n-iters {n_iters}; "
+                    f"nothing to do. Increase --n-iters to continue training.")
+            print(f"  [resume] TRUE resume from micro-iter {start_iter} "
+                  f"(optimizer + scheduler + RNG restored)")
+        else:
+            print(f"  [resume] WEIGHTS-ONLY warm-start (no optimizer/scheduler "
+                  f"in ckpt) — fresh optimizer, start_iter=0")
+
+    for i in range(start_iter, n_iters):
         if sequences is None:
             # Streaming: pull the next prefetched sequence from the DataLoader
             # (background workers will already have it ready in CPU RAM with
@@ -757,7 +870,7 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
         # save weights when smoothed reaches a new low (with cooldown). Gate on
         # window-end (skipped is meaningful then; mid-window we may carry stale
         # window_skipped flag).
-        if save_best and save_path is not None and is_accum_end and not skipped \
+        if save_best and saving_enabled and is_accum_end and not skipped \
                 and len(history) >= save_best_window:
             recent_finite = [h['total'] for h in history[-save_best_window:]
                               if not h['skipped'] and h['total'] == h['total']]
@@ -768,18 +881,26 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
                     best_smoothed_loss = smoothed
                     last_best_save_iter = i
                     n_best_saves += 1
-                    best_path = save_path.replace('.pt', '_best.pt')
-                    if best_path == save_path:               # save_path had no ".pt"
-                        best_path = save_path + '_best.pt'
-                    ckpt_best = _build_ckpt()
-                    # Tag with iter + smoothed loss for later identification
+                    ckpt_best = _build_ckpt()   # weights-only (warm-start)
                     ckpt_best['config']['iters_trained'] = i + 1
                     ckpt_best['config']['best_smoothed_loss'] = smoothed
                     ckpt_best['config']['best_window']        = save_best_window
-                    torch.save(ckpt_best, best_path)
+                    torch.save(ckpt_best, ckpt_best_path)
                     print(f"  [best #{n_best_saves}] iter {i}: smoothed L "
                           f"({save_best_window}-iter MA) = {smoothed:.4f} m → "
-                          f"saved {best_path}", flush=True)
+                          f"saved {ckpt_best_path}", flush=True)
+
+        # ── Periodic full-state checkpoint (resume anchor) ────────────────
+        # Overwrites a single ckpt_last.pt every `save_periodic_every`
+        # micro-iters with optimizer+scheduler+RNG+resume_iter so a kill loses
+        # at most that many iters. `--resume-from <run>/ckpt_last.pt` continues
+        # exactly. Disk stays constant (one file, overwritten in place).
+        if (saving_enabled and save_periodic_every > 0 and is_accum_end
+                and (i + 1) % save_periodic_every == 0):
+            torch.save(_build_ckpt(full_state=True, resume_iter=i + 1),
+                       ckpt_last_path)
+            print(f"  [ckpt_last] iter {i+1}: full-state resume ckpt → "
+                  f"{ckpt_last_path}", flush=True)
 
         # ── Periodic held-out eval (option B) ────────────────────────────
         # Triggered at window-end every `eval_every` micro-iters. Runs forward
@@ -829,19 +950,16 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
                 seg.train()
             print(f"  [eval @ iter {i+1}] BEV nn_dist_mean pooled over "
                   f"{len(eval_seqs)} seqs = {pooled:.4f} m", flush=True)
-            if save_best and save_path is not None and pooled < best_eval_nn_dist - 1e-6:
+            if save_best and saving_enabled and pooled < best_eval_nn_dist - 1e-6:
                 best_eval_nn_dist = pooled
                 n_eval_saves += 1
-                eval_path = save_path.replace('.pt', '_eval_best.pt')
-                if eval_path == save_path:                # save_path had no ".pt"
-                    eval_path = save_path + '_eval_best.pt'
-                ckpt_eval = _build_ckpt()
+                ckpt_eval = _build_ckpt()   # weights-only (warm-start)
                 ckpt_eval['config']['iters_trained']       = i + 1
                 ckpt_eval['config']['best_eval_nn_dist']   = pooled
                 ckpt_eval['config']['eval_seqs']           = list(eval_seqs)
-                torch.save(ckpt_eval, eval_path)
+                torch.save(ckpt_eval, ckpt_eval_best_path)
                 print(f"  [eval-best #{n_eval_saves}] iter {i+1}: BEV nn_dist "
-                      f"{pooled:.4f} m → saved {eval_path}", flush=True)
+                      f"{pooled:.4f} m → saved {ckpt_eval_best_path}", flush=True)
 
         # Print log line at every Kth optimizer step (window-end). With N=1
         # this is every K micro-iters, matching the old behavior. With N>1
@@ -885,33 +1003,35 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
     else:
         print("\nS1.7e/f overfit smoke FAILED — loss not decreasing.")
 
-    # Optional history dump (json) for later plotting
-    if history_path:
-        import json
-        with open(history_path, 'w') as fp:
+    # History dump (json) for later plotting → into the run dir when saving.
+    if history_out_path:
+        with open(history_out_path, 'w') as fp:
             json.dump(history, fp, indent=2)
-        print(f"  history saved to {history_path}")
+        print(f"  history saved to {history_out_path}")
 
-    # Optional weights checkpoint (end-of-training, weights-only).
-    # Stored as a single .pt with both module state_dicts + arch metadata so a
-    # later loader can verify shape/config compatibility before load_state_dict.
-    if save_path:
+    # End-of-training checkpoint. ckpt_final.pt is weights-only (eval/deploy);
+    # ckpt_last.pt (written periodically during the loop) is the resume anchor.
+    if saving_enabled:
         ckpt = _build_ckpt()
-        torch.save(ckpt, save_path)
+        torch.save(ckpt, ckpt_final_path)
         sz_mb = sum(t.numel() * t.element_size() for d in [ckpt['backbone'], ckpt['segmentor']]
                      for t in d.values()) / 1024**2
-        print(f"  weights saved to {save_path}  ({sz_mb:.1f} MB)")
-    if save_best and save_path is not None:
-        best_path = save_path.replace('.pt', '_best.pt')
-        if best_path == save_path:
-            best_path = save_path + '_best.pt'
-        if n_best_saves > 0:
-            print(f"  best-checkpoint saves during training: {n_best_saves} "
-                  f"(final best smoothed L = {best_smoothed_loss:.4f} m at iter "
-                  f"{last_best_save_iter}) → {best_path}")
-        else:
-            print(f"  save-best was enabled but no qualifying improvement was "
-                  f"seen (no {best_path} written)")
+        print(f"  final weights → {ckpt_final_path}  ({sz_mb:.1f} MB)")
+        # Also write a final full-state ckpt_last so the completed run can be
+        # extended later with --resume-from <run>/ckpt_last.pt.
+        if save_periodic_every > 0:
+            torch.save(_build_ckpt(full_state=True, resume_iter=n_iters),
+                       ckpt_last_path)
+            print(f"  final resume anchor → {ckpt_last_path}")
+        if save_best:
+            if n_best_saves > 0:
+                print(f"  best-checkpoint saves during training: {n_best_saves} "
+                      f"(final best smoothed L = {best_smoothed_loss:.4f} m at "
+                      f"iter {last_best_save_iter}) → {ckpt_best_path}")
+            else:
+                print(f"  save-best enabled but no qualifying improvement seen "
+                      f"(no {ckpt_best_path} written)")
+        print(f"  run dir: {run_dir}")
     return history
 
 
@@ -998,9 +1118,29 @@ if __name__ == "__main__":
                          "Use with --full-data + small N for multi-epoch revisits "
                          "(tests per-sample FPS-seed hypothesis cheaply).")
     p.add_argument("--history-path", type=str, default=None)
+    p.add_argument("--run-name", type=str, default=None,
+                    help="enable saving into a fresh timestamped run folder "
+                         "out/<run-name>-<YYYYmmdd-HHMMSS>/ containing "
+                         "ckpt_final.pt, ckpt_best.pt, ckpt_eval_best.pt, "
+                         "ckpt_last.pt, history.json. A new launch never "
+                         "overwrites a previous run.")
+    p.add_argument("--out-root", type=str, default="out",
+                    help="parent dir for run folders (default: out).")
+    p.add_argument("--resume-from", type=str, default=None,
+                    help="path to a checkpoint to resume/warm-start from. "
+                         "TRUE resume (optimizer+scheduler+RNG+iter) if it is a "
+                         "ckpt_last.pt; WEIGHTS-ONLY warm-start (start_iter=0) "
+                         "for a best/eval_best/final ckpt. Implies saving; the "
+                         "resumed run gets its OWN new timestamped folder.")
+    p.add_argument("--save-periodic-every", type=int, default=250,
+                    help="overwrite ckpt_last.pt (full resume state) every N "
+                         "micro-iters. The resume anchor — worst-case loss on a "
+                         "kill is N iters. 0 disables (no true-resume anchor). "
+                         "Default 250.")
     p.add_argument("--save-path", type=str, default=None,
-                    help="if set, write final {backbone, segmentor} weights "
-                         "(+ arch config) to this .pt at end of training.")
+                    help="[legacy] presence enables saving; the run still goes "
+                         "to a timestamped out/<dir-name>-<ts>/ folder (no "
+                         "overwrite). Prefer --run-name.")
     p.add_argument("--save-best", action="store_true",
                     help="also save weights to '<save-path>_best.pt' whenever "
                          "the moving-average L_total over the last "
@@ -1101,6 +1241,10 @@ if __name__ == "__main__":
          save_best=a.save_best,
          save_best_window=a.save_best_window,
          save_best_cooldown=a.save_best_cooldown,
+         run_name=a.run_name,
+         out_root=a.out_root,
+         resume_from=a.resume_from,
+         save_periodic_every=a.save_periodic_every,
          grad_accum_steps=a.grad_accum_steps,
          eval_every=a.eval_every,
          eval_seqs=tuple(a.eval_seqs),
