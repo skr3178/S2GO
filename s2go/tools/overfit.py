@@ -317,7 +317,9 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
          eval_every: int = 0,
          eval_seqs=(0, 100, 5000, 20000),
          train_tokens_json: str = None,
-         val_tokens_json: str = None):
+         val_tokens_json: str = None,
+         num_workers: int = 4,
+         shuffle: bool = True):
     assert not (denoise_only and depth_only), \
         "--denoise-only and --depth-only are mutually exclusive"
     # Denoise-only convenience: overrides
@@ -381,7 +383,39 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
         epochs_implied = n_iters / max(n_dataset, 1)
         print(f"Stage-1 run — {n_iters} iters STREAMING from {n_dataset} sequences "
               f"(≈ {epochs_implied:.1f} epochs)\n")
-        print("[1/4] Streaming loader (sequences loaded on-demand per iter)…")
+        print(f"[1/4] Streaming loader (DataLoader, num_workers={num_workers}, "
+              f"shuffle={shuffle}, pin_memory=True)…")
+        # Background DataLoader with num_workers prefetches the next sequence
+        # on CPU while the GPU is busy on the current iter. This is the single
+        # biggest wall-clock win for this pipeline since each loader[i] does
+        # ~1-2s of JPEG decode + lidar load + nusc-devkit lookups, which used
+        # to fully block the GPU.
+        from torch.utils.data import DataLoader as _DataLoader, Subset as _Subset
+
+        def _identity_collate(batch_):
+            # batch_size=1 with a List[Dict[str, Tensor]] payload; default
+            # collate would try to stack dicts. Just unwrap the singleton.
+            return batch_[0]
+
+        train_ds = loader
+        if limit_data is not None and limit_data > 0:
+            train_ds = _Subset(loader, range(n_dataset))
+        train_dl = _DataLoader(
+            train_ds,
+            batch_size=1,
+            num_workers=num_workers,
+            shuffle=shuffle,
+            pin_memory=True,
+            persistent_workers=(num_workers > 0),
+            collate_fn=_identity_collate,
+            drop_last=False,
+        )
+
+        def _infinite_iter(dl):
+            while True:
+                for batch in dl:
+                    yield batch
+        train_stream = _infinite_iter(train_dl)
         sequences = None     # signal to load per-iter below
     else:
         print(f"S1.7e/f overfit run — {n_iters} iters on {n_overfit} fixed sequences\n")
@@ -595,8 +629,11 @@ def main(n_iters: int = 50, n_overfit: int = 4, log_every: int = 5,
 
     for i in range(n_iters):
         if sequences is None:
-            # Streaming: load fresh sequence from disk + move to GPU
-            seq_cpu = loader[i % n_dataset]
+            # Streaming: pull the next prefetched sequence from the DataLoader
+            # (background workers will already have it ready in CPU RAM with
+            # pinned memory). Replaces the old `loader[i % n_dataset]` direct
+            # indexing which was single-threaded on the main process.
+            seq_cpu = next(train_stream)
             # Seed RNG by sample_token so FPS produces the SAME anchors every
             # time we revisit this sample across epochs. Without this, the
             # denoise target jitters per-iter (hacks.md H1) and the model
@@ -1008,6 +1045,16 @@ if __name__ == "__main__":
                          "eval pass (gated on --eval-every) draws sequences from "
                          "this val_loader instead of the train loader. "
                          "Refuses to start if train ∩ val sequences overlap.")
+    p.add_argument("--num-workers", type=int, default=4,
+                    help="DataLoader workers for the streaming train loader. "
+                         "Higher = more CPU parallelism for JPEG/lidar I/O. "
+                         "Default 4 (good fit for 12-thread CPUs). Set 0 to "
+                         "disable multiprocessing entirely (single-thread, "
+                         "matches legacy behaviour). Only used with --full-data.")
+    p.add_argument("--no-shuffle", action="store_true",
+                    help="disable DataLoader shuffling. Default is shuffle=True "
+                         "for full-data streaming (better training dynamics than "
+                         "the legacy i%%n_dataset sequential walk).")
     a = p.parse_args()
 
     # ── Resolve recipe defaults ────────────────────────────────────────────
@@ -1058,4 +1105,6 @@ if __name__ == "__main__":
          eval_every=a.eval_every,
          eval_seqs=tuple(a.eval_seqs),
          train_tokens_json=a.train_tokens_json,
-         val_tokens_json=a.val_tokens_json)
+         val_tokens_json=a.val_tokens_json,
+         num_workers=a.num_workers,
+         shuffle=(not a.no_shuffle))
