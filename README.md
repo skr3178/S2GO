@@ -51,3 +51,51 @@ scored **6.06 % mIoU (17-cls) / 15.50 % occ-IoU** — so 3→12 ep added
 - **Epoch-scaling is mostly spent.** 3→12 ep gave +2 pp; the paper's own
   (a)→(a)† shows +2.8 mIoU for 2× epochs. The remaining lever is
   pretraining + data, not more Stage-2 epochs.
+
+## Training & learning curves
+
+### Stage-2: bridged (depth-only Stage-1) vs Stage-2-only from-scratch
+
+Key experiment — bridging Stage-2 from a **depth-only** Stage-1 checkpoint
+(λ_denoise=0) vs training Stage-2 from scratch, same 12-epoch config. The
+bridged run was stopped at iter 60,815 / 130,200 (47%) because it tracked the
+from-scratch baseline with **no measurable benefit** (marginally behind on
+loss, even on mIoU). This empirically reproduces the paper's Table-3 finding:
+depth-only pretraining is *not* where the gain comes from — the **denoising
+objective** is. Full analysis:
+`out/stage2_curated_12ep_b16_bridged-20260518-102229/SUMMARY.md`.
+
+![Stage-2 bridged vs from-scratch](docs/figures/stage2_bridged_vs_fromscratch.png)
+
+![Stage-2 bridged loss/mIoU curve](docs/figures/stage2_bridged_loss_curve.png)
+
+### Stage-1 pretraining (depth-only, single-frame) learning curves
+
+12-epoch curated Stage-1 (`--depth-only`, T=1, λ=(0,1,0)) — clean monotone
+descent, 0 NaN over 130,200 iters; held-out BEV nn_dist best 1.547 m. The
+3-epoch run is the earlier survivor-anchored config.
+
+![Stage-1 12-epoch depth-only](docs/figures/stage1_12ep_depthonly_loss_curve.png)
+
+![Stage-1 3-epoch depth-only](docs/figures/stage1_3ep_depthonly_loss_curve.png)
+
+### LR-schedule design (warmup_cosine, curve = run)
+
+Why the master-curve / run-window decoupling matters: a 3-epoch curve fully
+decays at epoch 3 (blue); resuming to 6 epochs is a warm-restart (red); the
+correct continuous path is one curve shaped to the full horizon (green).
+
+![LR schedule 3 vs 6 epoch](lr_schedule_3vs6.png)
+
+### Stage-1 qualitative (paper-figure reproductions)
+
+Reproduced from the trained Stage-1 `ckpt_eval_best` (see
+`scripts/repro_paper_figs_stage1.py`, `scripts/viz_query_denoising.py`).
+
+![Fig1a reproduction — query denoising + predicted depth](Fig1a_stage1_repro.png)
+
+![Predicted depth vs GT (RGB / pred depth / sparse LiDAR)](Fig1a_depth_vs_gt.png)
+
+![Query-denoising BEV (arrows + displacement)](fig2_query_denoising.png)
+
+![Paper Fig2 — Stage-1-derivable columns](fig2_stage1_repro.png)
