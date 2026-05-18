@@ -69,3 +69,8 @@ out/
 .DS_Store
 .idea/
 .vscode/
+
+# Reference/again training-output logs (heavy; user-managed, not for GitHub)
+history/
+**/training_history.json
+**/eval_history.json
