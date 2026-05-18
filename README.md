@@ -54,6 +54,26 @@ scored **6.06 % mIoU (17-cls) / 15.50 % occ-IoU** — so 3→12 ep added
 
 ## Training & learning curves
 
+### Stage-2: 12-epoch curated from-scratch (headline run — 8.02% mIoU)
+
+The result in the table above. Stage-2-only, from-scratch, curated 270/50
+split, 130,200 micro-iters (12 ep) at effective batch 16, warmup_cosine
+2e-4→2e-5, **0 / 130,200 NaN skips**. Training loss is a clean monotone
+descent (34.9 → ~5 smoothed); val mIoU climbs to a high-6% mid-eval band
+(50-seq) with the **full 2,012-seq final eval at 8.02% mIoU / 17.98%
+occ-IoU**. Run dir: `out/stage2_curated_12ep_b16-20260516-135337/`.
+
+![Stage-2 12-ep from-scratch — loss + validation](docs/figures/stage2_12ep_fromscratch_curves.png)
+
+### Stage-2: epoch scaling (3-ep vs 12-ep from-scratch)
+
+Same recipe scaled 4× (3→12 ep): final mIoU 6.06% → 8.02% (**+1.96 pp,
+17-cls**) — a real but sharply diminishing return, consistent with the
+paper's own (a)→(a)† (+2.8 mIoU for 2× epochs). Epoch-scaling alone is
+mostly spent; the remaining lever is pretraining + data.
+
+![Stage-2 epoch scaling 3-ep vs 12-ep](docs/figures/stage2_3ep_vs_12ep_fromscratch.png)
+
 ### Stage-2: bridged (depth-only Stage-1) vs Stage-2-only from-scratch
 
 Key experiment — bridging Stage-2 from a **depth-only** Stage-1 checkpoint
