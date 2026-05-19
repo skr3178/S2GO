@@ -1,0 +1,12 @@
+todo
+
+- [ ] **Paper-faithful Stage-1→Stage-2 (the only publishable path):** run
+      Stage-1 with `--full-recipe` (noised-LiDAR init + **denoise** + depth +
+      RGB + ±0.5s velocity warps), *not* `--depth-only`, then bridge to
+      Stage-2 with **`--query-init learned`** (camera-only, no LiDAR at
+      inference — paper §3.4.1). Rationale: the `fps_lidar` diagnostic
+      (2026-05-18) proved the Stage-1 prior is real (+3 pp vs from-scratch),
+      but it uses LiDAR at inference → NOT paper-comparable. Only a
+      denoise-trained Stage-1 teaches the decoder to reposition arbitrary
+      (non-LiDAR-seeded) queries, which is what makes `learned`-init Stage-2
+      work. Target = paper Table-3 row (f), the +6–8 mIoU configuration.
