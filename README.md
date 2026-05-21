@@ -94,12 +94,30 @@ objective** is. Full analysis:
 The decisive coupling diagnostic — Stage-2 from the depth-only Stage-1 prior
 under both query-init paths, against the from-scratch baseline:
 **from-scratch** vs **bridged + `--query-init learned`** vs
-**bridged + `--query-init fps_lidar`**. The depth-only prior transfers only
-under `fps_lidar` init (LiDAR-seeded queries — matched input distribution)
-and even then yields no meaningful gain over from-scratch; `learned` init
-shows no benefit at all. This isolates the conclusion: a depth-only Stage-1
-is not the coupling lever — the **query-denoising objective** is. Full
-analysis: [`s2go/diagnosis.md`](s2go/diagnosis.md).
+**bridged + `--query-init fps_lidar`**.
+
+| Run | mIoU (full eval) | occ-IoU | iters |
+|---|---|---|---|
+| from-scratch 12-ep | 8.02% | 17.98% | 130,200 |
+| bridged + `learned` | ≈ from-scratch (peak 5.91% mid-eval) | — | 60,815 (stopped) |
+| **bridged + `fps_lidar`** | **8.90%** | **22.00%** | **30,000** |
+
+The `learned` path swaps in a fresh `Stage2Lifter` with random query
+positions — out-of-distribution for the depth-only Stage-1 decoder (trained
+on LiDAR-seeded queries) — so the prior contributes nothing and the bridge
+tracks from-scratch. Switching one flag to **`--query-init fps_lidar`**
+keeps the Stage-1 LiDAR-seeded lifter, giving the pretrained decoder its
+matched input distribution: the prior then transfers and the bridged run
+**beats the full from-scratch run by +0.88 pp mIoU / +4.0 pp occ-IoU in
+~23% of the iterations**. So the depth-only Stage-1 *does* carry a real,
+transferable geometry prior — the `learned` lifter swap was masking it.
+
+**Caveat:** `fps_lidar` uses LiDAR at Stage-2 train time, so 8.90% is the
+LiDAR-initialized variant, not a paper-faithful camera-only number. It
+proves the prior is real and the pipeline works; a publishable camera-only
+result still needs a full-recipe (denoise-trained) Stage-1 so the prior
+also transfers under `learned` init. Full analysis:
+[`s2go/diagnosis.md`](s2go/diagnosis.md).
 
 ![Stage-2 three-way comparison](docs/figures/stage2_threeway_compare.png)
 
