@@ -89,6 +89,29 @@ objective** is. Full analysis:
 
 ![Stage-2 bridged loss/mIoU curve](docs/figures/stage2_bridged_loss_curve.png)
 
+### Stage-2: three-way coupling comparison (from-scratch / learnable-init / fps_lidar)
+
+The decisive coupling diagnostic — Stage-2 from the depth-only Stage-1 prior
+under both query-init paths, against the from-scratch baseline:
+**from-scratch** vs **bridged + `--query-init learned`** vs
+**bridged + `--query-init fps_lidar`**. The depth-only prior transfers only
+under `fps_lidar` init (LiDAR-seeded queries — matched input distribution)
+and even then yields no meaningful gain over from-scratch; `learned` init
+shows no benefit at all. This isolates the conclusion: a depth-only Stage-1
+is not the coupling lever — the **query-denoising objective** is. Full
+analysis: [`s2go/diagnosis.md`](s2go/diagnosis.md).
+
+![Stage-2 three-way comparison](docs/figures/stage2_threeway_compare.png)
+
+### Full-pipeline convergence (Stage-1 → Stage-2)
+
+Combined Stage-1 pretraining + Stage-2 convergence view. (Predates the
+`fps_lidar` experiment — shows Stage-1 + the original bridged run; the
+`fps_lidar` result is captured in the three-way comparison above and in
+`s2go/diagnosis.md`.)
+
+![Full-pipeline convergence](docs/figures/full_pipeline_convergence.png)
+
 ### Stage-1 pretraining (depth-only, single-frame) learning curves
 
 12-epoch curated Stage-1 (`--depth-only`, T=1, λ=(0,1,0)) — clean monotone
