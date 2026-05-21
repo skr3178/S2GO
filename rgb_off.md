@@ -32,6 +32,10 @@ Device numbers come from `sudo openrgb --list-devices` and could change if hardw
 
 ## Persistent: run automatically at boot and after resume
 
+> **Status: installed & enabled 2026-05-20.** Verified device numbering (`0` = GPU,
+> `1` = motherboard) matches the unit; first run on `enable --now` exited
+> `0/SUCCESS`. `i2c-dev` set to load at boot via `/etc/modules-load.d/i2c-dev.conf`.
+
 A systemd unit at `/etc/systemd/system/openrgb-off.service` runs the two commands at boot and again whenever the system resumes from suspend / hibernate:
 
 ```ini
