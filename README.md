@@ -121,6 +121,38 @@ also transfers under `learned` init. Full analysis:
 
 ![Stage-2 three-way comparison](docs/figures/stage2_threeway_compare.png)
 
+### LR-schedule status — can either bridged run be resumed?
+
+Short answer: **not usefully.** Honest LR accounting for the two bridged
+Stage-2 runs:
+
+**`fps_lidar` bridge run (the 8.90% result) — LR fully exhausted.** Launched
+with `--iters 30000`, which sets the cosine horizon to 30,000 (curve = run),
+so the schedule reaches the **floor (peak × 0.10 = 2e-5) at the run's natural
+end**. There is no remaining LR budget; a `--resume-from` with a larger
+`--iters` would be a **warm-restart** (LR jumps back up from the floor — not
+bit-continuous, no successful-long-run precedent). To get more out of this
+configuration the productive move is a **fresh `fps_lidar` run with a longer
+horizon from the start** (curve = run = 130,200), not a mid-curve resume.
+
+![fps_lidar bridge — LR schedule + run end (fully decayed)](docs/figures/stage2_fpslidar_lr_stop.png)
+
+**Learnable-init bridge run — stopped early, LR not exhausted, but no reason
+to continue.** Launched at `--iters 130200`, stopped at iter 60,815 (47%) for
+diagnostic reasons. At the stop point segmentor LR ≈ **1.22e-4 (61% of peak)**;
+69,385 iters of useful cosine descent remained. So mechanically it
+*is* bit-continuously resumable. But the run was tracking the from-scratch
+baseline with no measurable benefit (the `learned` query-init mismatch), so
+continuing it would only reproduce the from-scratch result we already have on
+disk — not informative.
+
+![Learnable-init bridge — LR schedule + stop point (LR remaining)](docs/figures/stage2_bridged_lr_stop.png)
+
+**Net:** the bridged Stage-2 experiments are *complete* — `fps_lidar` because
+the curve is spent, `learnable-init` because the configuration was a known
+null. Further bridge improvements come from a denoise-trained Stage-1 (the
+`todo` item), not from extending either of these runs.
+
 ### Full-pipeline convergence (Stage-1 → Stage-2)
 
 Combined Stage-1 pretraining + Stage-2 convergence view. (Predates the
