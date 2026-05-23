@@ -121,6 +121,50 @@ also transfers under `learned` init. Full analysis:
 
 ![Stage-2 three-way comparison](docs/figures/stage2_threeway_compare.png)
 
+#### Interpretation & scope of this result
+
+In one line: Stage‑1 taught the model to *clean up rough sketches* of where
+things are. The default Stage‑2 (`learned`) was handing it a *blank page*
+of random query positions, so the trained skill never engaged. The
+`fps_lidar` flag hands it *the rough sketches it was trained to clean* —
+LiDAR‑seeded queries with a bit of noise — and the prior immediately
+delivers. This is a strong, valid ablation: it isolates one variable (the
+initial query distribution in Stage‑2) and shows that the pretrained
+knowledge **is real** and was being thrown away by the default lifter swap.
+
+What this result is — and is not — appropriate for:
+
+| Use of this 8.90% number | Appropriate? |
+|---|---|
+| Internal debugging / understanding the two‑stage pipeline | ✅ yes |
+| Ablation / diagnostic in a technical report (with the LiDAR caveat) | ✅ yes |
+| **Final camera‑only method matching the paper** | ❌ **no** — see below |
+| Explanatory analogy for collaborators | ✅ yes |
+
+**Why it isn't paper‑faithful (yet).** The paper's whole premise is
+camera‑only at inference: queries are randomly initialized and the model
+still works. It achieves that with the **denoising pretraining objective**
+(the L_denoise term in Eq. 8) — Stage‑1 explicitly learns to *self‑organize*
+queries from random initial positions, so by Stage‑2 the random `learned`
+init is no longer out‑of‑distribution. Our Stage‑1 checkpoint here was
+trained `--depth-only` (λ_denoise = 0, no RGB) — that term was off, so
+the model never acquired the self‑organize ability and the `learned` path
+is dead. `fps_lidar` sidesteps the problem by *handing the model a
+distribution it was trained on*, but at the cost of needing LiDAR at
+Stage‑2 train/init time. The publishable camera‑only fix is therefore not
+this flag — it is a **full‑recipe Stage‑1 with the denoising objective on**
+(paper Table‑3 row (f)), after which the prior should also transfer under
+`learned` init.
+
+**Note on number comparability.** The runs above are not equal‑duration:
+from‑scratch (130k iters), bridged‑`learned` (60.8k, stopped), bridged
+fps_lidar (30k). The bridged fps_lidar still wins at *every* matched iter
+checkpoint (e.g. ~5% vs ~7% at 28–30k iters), so the conclusion is robust;
+but a final paper‑style table should keep all three at the same iter
+budget to remove that asymmetry. The key qualitative finding —
+**bridged + `learned` ≈ from‑scratch, bridged + `fps_lidar` ≫ both** — is
+the load‑bearing result, not the exact numeric gap.
+
 ### LR-schedule status — can either bridged run be resumed?
 
 Short answer: **not usefully.** Honest LR accounting for the two bridged
